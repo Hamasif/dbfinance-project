@@ -1,0 +1,81 @@
+/* 1. Reset Global & Aturan Dasar Box Model */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 2. Pengaturan Layout Dasar Body & HTML (Desktop) */
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #f8fafc; /* Warna abu-abu kebiruan modern */
+  color: #0f172a; 
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden; /* Dikunci hidden hanya untuk desktop agar layout tidak double scroll */
+}
+
+/* 3. Pembungkus Utama Aplikasi (Layout Flexbox Induk) */
+.app-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  flex-direction: row;
+}
+
+/* 4. Optimasi Responsif Global Menggunakan Media Queries (HP & Tablet) */
+@media (max-width: 768px) {
+  html, body {
+    overflow-y: auto !important; /* Membuka kunci scroll vertikal di HP */
+    height: auto; /* Ketinggian otomatis mengikuti panjang konten halaman */
+  }
+
+  .app-container {
+    flex-direction: column; /* Mengubah susunan menu & konten menjadi berjejer ke bawah */
+    height: auto; 
+    min-height: 100vh;
+  }
+
+  /* Mengoptimalkan ukuran font global sedikit lebih kecil di HP agar tidak padat */
+  body {
+    font-size: 14px;
+  }
+
+  /* Kustomisasi scrollbar khusus perangkat mobile agar tidak memakan ruang */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* 5. Kustomisasi Scrollbar untuk Desktop (Agar UI Terlihat Premium) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* Warna scrollbar (slate-300) */
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* Warna scrollbar saat di-hover (slate-400) */
+}
+
+/* 6. Hilangkan Efek Highlight Biru Saat Elemen/Tombol Di-klik di HP */
+button, a, div {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 7. Pengaturan Standar Input/Select Agar Responsif Terhadap Zoom di Browser HP */
+input, select, textarea {
+  font-family: inherit;
+  font-size: 14px; /* Mencegah auto-zoom paksa di browser iOS Safari */
+}
