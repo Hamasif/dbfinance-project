@@ -12,9 +12,11 @@ class OfficeCategoryController extends Controller
     {
         // Mengambil kategori pos dan otomatis menjumlahkan kolom 'amount' dari relasi transaksi yang bertipe 'pengeluaran'
         $categories = OfficeCategory::latest()
-            ->withSum(['transactions as total_expenses' => function ($query) {
-                $query->where('type', 'pengeluaran');
-            }], 'amount')
+            ->withSum([
+                'transactions as total_expenses' => function ($query) {
+                    $query->where('type', 'pengeluaran');
+                }
+            ], 'amount')
             ->get();
 
         // Mengubah nilai null menjadi 0 sebelum dikirim ke React
@@ -28,17 +30,32 @@ class OfficeCategoryController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'category_name'    => 'required|string',
-            'person_in_charge' => 'required|string',
-        ]);
+        try {
 
-        $category = OfficeCategory::create($request->all());
+            $request->validate([
+                'category_name' => 'required|string',
+                'person_in_charge' => 'required|string',
+            ]);
 
-        return response()->json([
-            'message' => 'Kategori kantor berhasil disimpan!',
-            'data' => $category
-        ]);
+            $category = OfficeCategory::create([
+                'category_name' => $request->category_name,
+                'person_in_charge' => $request->person_in_charge,
+            ]);
+
+            return response()->json([
+                'message' => 'Kategori berhasil disimpan',
+                'data' => $category
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
+
+        }
     }
 
     public function destroy($id)
@@ -50,31 +67,33 @@ class OfficeCategoryController extends Controller
     }
 
     public function report()
-{
-    // Ambil semua kategori kantor beserta transaksi terkait yang filternya bertipe pengeluaran
-    $categories = OfficeCategory::latest()
-        ->with(['transactions' => function($query) {
-            $query->whereIn('type', ['pengeluaran', 'pengeluaran_kantor'])
-                  ->orderBy('date', 'desc')
-                  ->orderBy('created_at', 'desc');
-        }])
-        ->get();
+    {
+        // Ambil semua kategori kantor beserta transaksi terkait yang filternya bertipe pengeluaran
+        $categories = OfficeCategory::latest()
+            ->with([
+                'transactions' => function ($query) {
+                    $query->whereIn('type', ['pengeluaran', 'pengeluaran_kantor'])
+                        ->orderBy('date', 'desc')
+                        ->orderBy('created_at', 'desc');
+                }
+            ])
+            ->get();
 
-    // Map data agar sesuai dengan struktur state yang dibutuhkan frontend React Anda
-    $reportData = $categories->map(function ($cat) {
-        $transactions = $cat->transactions;
-        $totalPengeluaran = $transactions->sum('amount');
+        // Map data agar sesuai dengan struktur state yang dibutuhkan frontend React Anda
+        $reportData = $categories->map(function ($cat) {
+            $transactions = $cat->transactions;
+            $totalPengeluaran = $transactions->sum('amount');
 
-        return [
-            'id' => $cat->id,
-            'display_name' => $cat->category_name,
-            'sub_label' => "Purchaser: " . $cat->person_in_charge,
-            'transactions' => $transactions->values(),
-            'totalPengeluaran' => $totalPengeluaran,
-            'tag' => 'Kas Kantor'
-        ];
-    });
+            return [
+                'id' => $cat->id,
+                'display_name' => $cat->category_name,
+                'sub_label' => "Purchaser: " . $cat->person_in_charge,
+                'transactions' => $transactions->values(),
+                'totalPengeluaran' => $totalPengeluaran,
+                'tag' => 'Kas Kantor'
+            ];
+        });
 
-    return response()->json($reportData);
-}
+        return response()->json($reportData);
+    }
 }
