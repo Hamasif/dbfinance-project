@@ -6,7 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Transaction extends Model
 {
-    public function project() {
-    return $this->belongsTo(Project::class, 'project_id');
-}
+    protected $fillable = [
+        'project_id',
+        'type',
+        'description',
+        'amount',
+        'date',
+        'category',
+    ];
+
+    public function project()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
+    }
 }
