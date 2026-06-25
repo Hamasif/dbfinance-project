@@ -446,7 +446,7 @@ function DetailProjectView({
             <tbody>
               {(() => {
                 const sorted = [...transactions].reverse();
-
+                console.log("Transactions:", transactions);
                 let running = Number(anggaranProject || 0);
 
                 const withBalance = [];
