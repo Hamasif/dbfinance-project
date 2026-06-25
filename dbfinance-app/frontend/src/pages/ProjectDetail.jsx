@@ -447,32 +447,25 @@ function DetailProjectView({
               {(() => {
                 const sorted = [...transactions].reverse();
 
-                const result = sorted.reduce(
-                  (acc, t) => {
-                    const transactionAmount = Number(t.amount || 0);
+                let running = Number(anggaranProject || 0);
 
-                    const nextBalance =
-                      t.type === 'pengeluaran'
-                        ? acc.balance - transactionAmount
-                        : acc.balance + transactionAmount;
+                const withBalance = [];
 
-                    acc.items.push({
-                      ...t,
-                      runningBalance: nextBalance,
-                    });
+                sorted.forEach(t => {
+                  const transactionAmount = Number(t.amount || 0);
 
-                    return {
-                      balance: nextBalance,
-                      items: acc.items,
-                    };
-                  },
-                  {
-                    balance: Number(anggaranProject || 0),
-                    items: [],
+                  if (t.type === 'pengeluaran') {
+                    running = running - transactionAmount;
+                  } else {
+                    running = running + transactionAmount;
                   }
-                );
 
-                const withBalance = result.items;
+                  withBalance.push({
+                    ...t,
+                    runningBalance: running,
+                  });
+                });
+
                 return withBalance.reverse().map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                     <td style={{ padding: '14px 16px', color: '#6b7280', whiteSpace: 'nowrap' }}>{t.date}</td>
