@@ -446,22 +446,33 @@ function DetailProjectView({
             <tbody>
               {(() => {
                 const sorted = [...transactions].reverse();
-                let running = Number(anggaranProject || 0); // Pastikan dicasting ke Number sejak awal
 
-                const withBalance = sorted.map(t => {
-                  const transactionAmount = Number(t.amount || 0);
+                const result = sorted.reduce(
+                  (acc, t) => {
+                    const transactionAmount = Number(t.amount || 0);
 
-                  if (t.type === 'pengeluaran') {
-                    running -= transactionAmount;
-                  } else {
-                    running += transactionAmount;
+                    const nextBalance =
+                      t.type === 'pengeluaran'
+                        ? acc.balance - transactionAmount
+                        : acc.balance + transactionAmount;
+
+                    acc.items.push({
+                      ...t,
+                      runningBalance: nextBalance,
+                    });
+
+                    return {
+                      balance: nextBalance,
+                      items: acc.items,
+                    };
+                  },
+                  {
+                    balance: Number(anggaranProject || 0),
+                    items: [],
                   }
+                );
 
-                  return {
-                    ...t,
-                    runningBalance: running
-                  };
-                });
+                const withBalance = result.items;
                 return withBalance.reverse().map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                     <td style={{ padding: '14px 16px', color: '#6b7280', whiteSpace: 'nowrap' }}>{t.date}</td>
