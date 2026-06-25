@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'http://66.96.229.251:8000/api';
 
 export default function Neraca() {
   const [loading, setLoading] = useState(true);

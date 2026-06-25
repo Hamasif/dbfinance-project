@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 // FORMAT RUPIAH GLOBAL
 const formatRupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'http://66.96.229.251:20528/api';
 
 export default function ProjectDetail({ project, onBack }) {
   const [transactions, setTransactions] = useState([]);
@@ -451,12 +451,16 @@ function DetailProjectView({
                 const withBalance = sorted.map(t => {
                   const transactionAmount = Number(t.amount || 0);
 
-                  // UBAHAN: Tulis operasi matematika secara eksplisit, jangan gunakan shorthand -= atau += langsung di satu baris inline jika linter protektif
                   if (t.type === 'pengeluaran') {
-                    running = running - transactionAmount;
+                    running -= transactionAmount;
                   } else {
-                    running = running + transactionAmount;
+                    running += transactionAmount;
                   }
+
+                  return {
+                    ...t,
+                    runningBalance: running
+                  };
                 });
                 return withBalance.reverse().map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>

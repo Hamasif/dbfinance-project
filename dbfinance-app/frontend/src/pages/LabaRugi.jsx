@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 
-const API_URL = 'http://127.0.0.1:8000/api/reports/laba-rugi';
+const API_URL = 'http://66.96.229.251:8000/api/reports/laba-rugi';
 
 export default function LabaRugi() {
   const [loading, setLoading] = useState(true);

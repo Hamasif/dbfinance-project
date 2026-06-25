@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 // URL Endpoint dari Server Laravel API yang mengambil data project murni
-const API_URL = 'http://127.0.0.1:8000/api/projects';
+const API_URL = 'http://66.96.229.251:8000/api/projects';
 
 export default function BukuBesar() {
   const [projects, setProjects] = useState([]);
