@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 // FORMAT RUPIAH GLOBAL
 const formatRupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
-const API_BASE_URL = 'http://66.96.229.251:20528/api';
+const API_BASE_URL = 'http://66.96.229.251:8000/api';
 
 export default function ProjectDetail({ project, onBack }) {
   const [transactions, setTransactions] = useState([]);
