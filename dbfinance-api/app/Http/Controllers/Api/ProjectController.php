@@ -48,7 +48,7 @@ class ProjectController extends Controller
             $totalPemasukan = $transactions->where('type', 'pemasukan')->sum('amount');
             $totalPengeluaran = $transactions->where('type', 'pengeluaran')->sum('amount');
 
-            $sisaAnggaran = $project->project_amount - totalPengeluaran;
+            $sisaAnggaran = $project->project_amount - $totalPengeluaran;
 
             $persen = $project->project_amount > 0
                 ? min(100, round(($totalPengeluaran / $project->project_amount) * 100))
