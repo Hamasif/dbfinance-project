@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = 'http://66.96.229.251:8000/api/reports/office';
+const API_URL = 'http://66.96.229.251:20527/api/reports/office';
 
 export default function LaporanKantor() {
     const [allData, setAllData] = useState([]);

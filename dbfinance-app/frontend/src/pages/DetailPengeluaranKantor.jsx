@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const API_BASE_URL = 'http://66.96.229.251:8000/api';
+const API_BASE_URL = 'http://66.96.229.251:20527/api';
 
 export default function DetailPengeluaranKantor({ onBack }) {
   const [transactions, setTransactions] = useState([]);

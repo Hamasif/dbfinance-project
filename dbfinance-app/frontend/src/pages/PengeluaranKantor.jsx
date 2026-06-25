@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = 'http://66.96.229.251:8000/api/office-categories';
+const API_URL = 'http://66.96.229.251:20527/api/office-categories';
 
 export default function PengeluaranKantor({ onSelectCategory }) {
     const [categories, setCategories] = useState([]);
