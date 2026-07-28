@@ -21,6 +21,7 @@ export default function ProjectDetail({ project, onBack }) {
     amount: '',
     date: new Date().toISOString().split('T')[0],
     category: '',
+    receipt: null,
   });
 
   // 1. Deteksi Ukuran Layar Responsif
@@ -77,44 +78,55 @@ export default function ProjectDetail({ project, onBack }) {
       return;
     }
 
+
     try {
-      const payload = {
-        project_id: project.id,
-        type: isOffice ? 'pengeluaran' : form.type,
-        description: form.description,
-        amount: Number(form.amount),
-        date: form.date,
-        category: form.category || null
-      };
+
+      const formData = new FormData();
+
+      formData.append("project_id", project.id);
+      formData.append("type", isOffice ? "pengeluaran" : form.type);
+      formData.append("description", form.description);
+      formData.append("amount", Number(form.amount));
+      formData.append("date", form.date);
+      formData.append("category", form.category || "");
+
+      // Upload bukti (opsional)
+      if (form.receipt) {
+        formData.append("receipt", form.receipt);
+      }
 
       const response = await fetch(`${API_BASE_URL}/transactions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Accept: "application/json"
         },
-        body: JSON.stringify(payload)
+        body: formData
       });
 
-      if (!response.ok) throw new Error("Gagal menyimpan transaksi ke server");
+      if (!response.ok)
+        throw new Error("Gagal menyimpan transaksi ke server");
 
       setForm({
-        type: isOffice ? 'pengeluaran' : 'pemasukan',
-        description: '',
-        amount: '',
-        date: new Date().toISOString().split('T')[0],
-        category: ''
+        type: isOffice ? "pengeluaran" : "pemasukan",
+        description: "",
+        amount: "",
+        date: new Date().toISOString().split("T")[0],
+        category: "",
+        receipt: null
       });
+
       setShowForm(false);
       setLoading(true);
-
       await fetchTransactions(true);
-    } catch (error) {
-      console.error("Gagal menyimpan transaksi: ", error);
-      alert("Terjadi masalah saat mencoba menyimpan data transaksi ke MySQL.");
-    }
-  };
 
+    } catch (error) {
+
+      console.error(error);
+
+      alert("Terjadi masalah saat menyimpan transaksi.");
+
+    }
+  }
   // 4. UBAHAN: Hapus Transaksi dari API Laravel (MySQL)
   const handleDelete = async (id) => {
     if (confirm('Apakah Anda yakin ingin menghapus transaksi ini?')) {
@@ -164,6 +176,7 @@ export default function ProjectDetail({ project, onBack }) {
       showForm={showForm}
       setShowForm={setShowForm}
       form={form}
+      setForm={setForm}
       handleChange={handleChange}
       handleSubmit={handleSubmit}
       handleDelete={handleDelete}
@@ -177,7 +190,7 @@ export default function ProjectDetail({ project, onBack }) {
 // VIEW SUB-COMPONENTS (TETAP SAMA SEPERTI KODE ASLI ANDA)
 // =========================================================================
 function DetailPengeluaranKantorView({
-  project, transactions, loading, showForm, setShowForm, form, handleChange, handleSubmit, handleDelete, onBack, isMobile
+  project, transactions, loading, showForm, setShowForm, form, setForm, handleChange, handleSubmit, handleDelete, onBack, isMobile
 }) {
   const totalPengeluaran = transactions
     .filter(t => t.type === 'pengeluaran')
@@ -237,6 +250,29 @@ function DetailPengeluaranKantorView({
             <div>
               <label style={{ fontSize: '12px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '5px' }}>Tanggal *</label>
               <input name="date" value={form.date} onChange={handleChange} type="date" style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13.5px', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+              <label style={{ fontSize: '12px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '5px' }}> Upload Bukti / Nota <span style={{ color: '#9ca3af' }}>(Opsional)</span></label>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) {
+                    alert("Ukuran file maksimal 2 MB");
+                    e.target.value = "";
+                    return;
+                  }
+                  setForm({ ...form, receipt: file });
+                }}
+                style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '13.5px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
+              />
+              {form.receipt && (
+                <div style={{ marginTop: '8px', color: '#16a34a', fontSize: '12px', fontWeight: '500' }}>
+                  📎 {form.receipt.name}
+                </div>
+              )}
             </div>
             <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
               <label style={{ fontSize: '12px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '5px' }}>Kategori</label>
@@ -311,7 +347,7 @@ function DetailPengeluaranKantorView({
 }
 
 function DetailProjectView({
-  project, transactions, showForm, setShowForm, form, handleChange, handleSubmit, handleDelete, onBack, isMobile
+  project, transactions, showForm, setShowForm, setForm, form, handleChange, handleSubmit, handleDelete, onBack, isMobile
 }) {
   const totalPemasukan = transactions
     .filter(t => t.type === 'pemasukan')
@@ -321,9 +357,11 @@ function DetailProjectView({
     .filter(t => t.type === 'pengeluaran')
     .reduce((s, t) => s + Number(t.amount), 0);
 
-  const saldoKas = totalPemasukan - totalPengeluaran;
   const anggaranProject = Number(project.project_amount || 0);
-  const sisaAnggaran = anggaranProject - totalPengeluaran;
+  const sisaAnggaran =
+    anggaranProject
+    + totalPemasukan
+    - totalPengeluaran;
 
   const persen = anggaranProject > 0
     ? Math.min(100, Math.round((totalPengeluaran / anggaranProject) * 100))
@@ -365,7 +403,7 @@ function DetailProjectView({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : window.innerWidth <= 1024 ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : window.innerWidth <= 1024 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: '12px', marginBottom: '20px' }}>
         <div style={{ background: sisaAnggaran >= 0 ? '#F0FDF4' : '#FFF7F7', border: sisaAnggaran >= 0 ? '1px solid #bbf7d0' : '1px solid #fecaca', borderRadius: '10px', padding: '14px 16px', boxSizing: 'border-box' }}>
           <div style={{ fontSize: '10px', color: sisaAnggaran >= 0 ? '#166534' : '#991b1b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Sisa Anggaran</div>
           <div style={{ fontSize: '16px', fontWeight: '700', color: sisaAnggaran >= 0 ? '#15803d' : '#dc2626', wordBreak: 'break-all' }}>{sisaAnggaran < 0 ? '-' : ''}{formatRupiah(Math.abs(sisaAnggaran))}</div>
@@ -384,16 +422,71 @@ function DetailProjectView({
           <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{transactions.filter(t => t.type === 'pengeluaran').length} transaksi</div>
         </div>
 
-        <div style={{ background: saldoKas >= 0 ? '#EFF6FF' : '#FFF7F7', border: saldoKas >= 0 ? '1px solid #bfdbfe' : '1px solid #fecaca', borderRadius: '10px', padding: '14px 16px', boxSizing: 'border-box' }}>
-          <div style={{ fontSize: '10px', color: saldoKas >= 0 ? '#1e40af' : '#991b1b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}>Saldo Kas</div>
-          <div style={{ fontSize: '16px', fontWeight: '700', color: saldoKas >= 0 ? '#1d4ed8' : '#dc2626', wordBreak: 'break-all' }}>{saldoKas < 0 ? '-' : ''}{formatRupiah(Math.abs(saldoKas))}</div>
-          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>kondisi: {saldoKas >= 0 ? 'surplus' : 'defisit'}</div>
-        </div>
       </div>
 
       {showForm && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', marginBottom: '20px', boxSizing: 'border-box' }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '16px', marginTop: 0 }}>Tambah Transaksi Baru</h2>
+          <div style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
+            <label
+              style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                display: 'block'
+              }}
+            >
+              Jenis Transaksi
+            </label>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, type: 'pemasukan' })}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background:
+                    form.type === 'pemasukan'
+                      ? '#16a34a'
+                      : '#e5e7eb',
+                  color:
+                    form.type === 'pemasukan'
+                      ? '#fff'
+                      : '#111827',
+                  fontWeight: '600'
+                }}
+              >
+                🟢 Pemasukan
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, type: 'pengeluaran' })}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background:
+                    form.type === 'pengeluaran'
+                      ? '#dc2626'
+                      : '#e5e7eb',
+                  color:
+                    form.type === 'pengeluaran'
+                      ? '#fff'
+                      : '#111827',
+                  fontWeight: '600'
+                }}
+              >
+                🔴 Pengeluaran
+              </button>
+            </div>
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px' }}>
             <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
@@ -419,6 +512,66 @@ function DetailProjectView({
                 <option value="Lainnya">Lainnya</option>
               </select>
             </div>
+          </div>
+
+          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+            <label
+              style={{
+                fontSize: '12px',
+                fontWeight: '500',
+                color: '#374151',
+                display: 'block',
+                marginBottom: '5px'
+              }}
+            >
+              Upload Bukti / Nota
+              <span style={{ color: '#9ca3af' }}> (Opsional)</span>
+            </label>
+
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              onChange={(e) => {
+
+                const file = e.target.files[0];
+
+                if (!file) return;
+
+                if (file.size > 2 * 1024 * 1024) {
+                  alert("Ukuran file maksimal 2 MB");
+                  e.target.value = "";
+                  return;
+                }
+
+                setForm({
+                  ...form,
+                  receipt: file
+                });
+
+              }}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                background: '#fff'
+              }}
+            />
+
+            {
+              form.receipt && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 12,
+                    color: "#16a34a"
+                  }}
+                >
+                  📎 {form.receipt.name}
+                </div>
+              )
+            }
+
           </div>
 
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e5e7eb' }}>

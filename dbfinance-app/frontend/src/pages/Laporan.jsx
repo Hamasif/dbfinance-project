@@ -6,8 +6,8 @@ export default function Laporan() {
     const [allData, setAllData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
-    
-    const [viewAllTarget, setViewAllTarget] = useState(null); 
+
+    const [viewAllTarget, setViewAllTarget] = useState(null);
 
     useEffect(() => {
         const handleResize = () => {
@@ -92,16 +92,16 @@ export default function Laporan() {
                 <h3>Daftar Seluruh Riwayat Transaksi</h3>
                 <table>
                     <thead>
-                        <tr><th>Tanggal</th><th>Deskripsi</th><th>Kategori</th><th>Tipe</th><th>Jumlah</th></tr>
+                        <tr><th>Tanggal</th><th>Deskripsi</th><th>Debit</th><th>Kredit</th><th>Bukti</th></tr>
                     </thead>
                     <tbody>
                         ${data.transactions.map(t => `
                             <tr>
                                 <td>${t.date}</td>
                                 <td><strong>${t.description}</strong></td>
-                                <td>${t.category || '—'}</td>
-                                <td><span class="badge ${t.type === 'pemasukan' ? 'badge-pemasukan' : 'badge-pengeluaran'}">${t.type.toUpperCase()}</span></td>
-                                <td><span style="color: ${t.type === 'pemasukan' ? '#15803d' : '#dc2626'}; font-weight: 600;">${formatRupiah(t.amount)}</span></td>
+                                <td style="color:#15803d; font-weight:600; text-align:right;">${t.type === "pemasukan" ? formatRupiah(t.amount) : "-"}</td>
+                                <td style="color:#dc2626; font-weight:600; text-align:right;">${t.type === "pengeluaran" ? formatRupiah(t.amount) : "-"}</td>
+                                <td style="text-align:center;">${t.receipt ? `<a href="http://66.96.229.251:20527/storage/${t.receipt}" target="_blank">📎 Lihat</a>` : "-"}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -139,7 +139,20 @@ export default function Laporan() {
                         <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
                                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                                    {['Tanggal', 'Deskripsi', 'Kategori', 'Tipe', 'Jumlah'].map(h => <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase' }}>{h}</th>)}
+                                    {['Tanggal', 'Deskripsi', 'Debit', 'Kredit', 'Bukti'].map(h => (
+                                        <th
+                                            key={h}
+                                            style={{
+                                                padding: '10px 16px',
+                                                textAlign: 'left',
+                                                fontSize: '11px',
+                                                color: '#9ca3af',
+                                                textTransform: 'uppercase'
+                                            }}
+                                        >
+                                            {h}
+                                        </th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody>
@@ -147,11 +160,21 @@ export default function Laporan() {
                                     <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{t.date}</td>
                                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{t.description}</td>
-                                        <td style={{ padding: '12px 16px' }}>{t.category || '—'}</td>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <span style={{ padding: '2px 8px', borderRadius: '20px', fontSize: '10px', fontWeight: '600', background: t.type === 'pemasukan' ? '#F0FDF4' : '#FFF7F7', color: t.type === 'pemasukan' ? '#15803d' : '#dc2626' }}>{t.type === 'pemasukan' ? '↑ Pemasukan' : '↓ Pengeluaran'}</span>
+                                        <td style={{ padding: '12px 16px', color: '#16a34a', fontWeight: '700' }}>
+                                            {t.type === "pemasukan" ? formatRupiah(t.amount) : "-"}
                                         </td>
-                                        <td style={{ padding: '12px 16px', fontWeight: '700', color: t.type === 'pemasukan' ? '#15803d' : '#dc2626' }}>{formatRupiah(t.amount)}</td>
+                                        <td style={{ padding: '12px 16px', color: '#dc2626', fontWeight: '700' }}>
+                                            {t.type === "pengeluaran" ? formatRupiah(t.amount) : "-"}
+                                        </td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            {t.receipt ? (
+                                                <a href={`http://66.96.229.251:20527/storage/${t.receipt}`} target="_blank" rel="noreferrer" style={{ color: "#185FA5", fontWeight: "600", textDecoration: "none" }}>
+                                                    📎 Lihat
+                                                </a>
+                                            ) : (
+                                                <span style={{ color: "#9ca3af" }}>-</span>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -190,7 +213,9 @@ export default function Laporan() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {allData.map(p => (
-                        <div key={p.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div key={p.id}
+                            onClick={() => setViewAllTarget(p)}
+                            style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
                             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', background: '#f9fafb', gap: '16px' }}>
                                 <div>
                                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>{p.display_name}</div>
@@ -203,7 +228,10 @@ export default function Laporan() {
                                         </div>
                                         <span style={{ fontSize: '11px', fontWeight: '600' }}>{p.persen}%</span>
                                     </div>
-                                    <button onClick={() => handleDownloadPDF(p)} style={{ background: '#fff', border: '1px solid #d1d5db', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>Cetak PDF</button>
+                                    <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDownloadPDF(p);
+                                    }} style={{ background: '#fff', border: '1px solid #d1d5db', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>Cetak PDF</button>
                                 </div>
                             </div>
 
@@ -212,31 +240,6 @@ export default function Laporan() {
                                 <div style={{ padding: '10px 20px', borderRight: !isMobile ? '1px solid #e5e7eb' : 'none' }}><span style={{ fontSize: '10px', color: '#6b7280', display: 'block' }}>PENGELUARAN</span><strong style={{ color: '#dc2626', fontSize: '13.5px' }}>{formatRupiah(p.totalPengeluaran)}</strong></div>
                                 <div style={{ padding: '10px 20px' }}><span style={{ fontSize: '10px', color: '#6b7280', display: 'block' }}>SISA ANGGARAN</span><strong style={{ color: p.sisaAnggaran >= 0 ? '#1d4ed8' : '#dc2626', fontSize: '13.5px' }}>{formatRupiah(p.sisaAnggaran)}</strong></div>
                             </div>
-
-                            {p.transactions.length > 0 && (
-                                <div>
-                                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                                        <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '12px' }}>
-                                            <tbody>
-                                                {p.transactions.slice(0, 5).map(t => (
-                                                    <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                                        <td style={{ padding: '10px 20px', color: '#6b7280', width: '100px' }}>{t.date}</td>
-                                                        <td style={{ padding: '10px 20px', fontWeight: '500' }}>{t.description}</td>
-                                                        <td style={{ padding: '10px 20px', color: '#4b5563' }}>{t.category || '—'}</td>
-                                                        <td style={{ padding: '10px 20px', width: '110px' }}><span style={{ fontSize: '10px', fontWeight: '600', color: t.type === 'pemasukan' ? '#15803d' : '#dc2626' }}>{t.type === 'pemasukan' ? '↑ Pemasukan' : '↓ Pengeluaran'}</span></td>
-                                                        <td style={{ padding: '10px 20px', fontWeight: '700', textAlign: 'right', color: t.type === 'pemasukan' ? '#15803d' : '#dc2626', width: '120px' }}>{formatRupiah(t.amount)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    {p.transactions.length > 5 && (
-                                        <div style={{ padding: '12px', borderTop: '1px solid #f3f4f6', textAlign: 'center' }}>
-                                            <span onClick={() => setViewAllTarget(p)} style={{ fontSize: '12.5px', color: '#185FA5', fontWeight: '600', cursor: 'pointer' }}>Lihat Semua Transaksi ({p.transactions.length}) →</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     ))}
                 </div>
