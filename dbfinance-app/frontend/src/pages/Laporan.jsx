@@ -8,6 +8,10 @@ export default function Laporan() {
     const [isMobile, setIsMobile] = useState(false);
 
     const [viewAllTarget, setViewAllTarget] = useState(null);
+    const [search, setSearch] = useState("");
+    const [filterDate, setFilterDate] = useState("");
+    const [filterMonth, setFilterMonth] = useState("");
+    const [transactionType, setTransactionType] = useState("all");
 
     useEffect(() => {
         const handleResize = () => {
@@ -114,6 +118,40 @@ export default function Laporan() {
         printWindow.document.close();
     };
 
+    const filteredTransactions = viewAllTarget
+        ? viewAllTarget.transactions.filter((trx) => {
+
+            // Search
+            const matchSearch =
+                trx.description.toLowerCase().includes(search.toLowerCase());
+
+            // Tanggal
+            const matchDate =
+                !filterDate || trx.date === filterDate;
+
+            // Bulan
+            const matchMonth =
+                !filterMonth ||
+                trx.date.substring(0, 7) === filterMonth;
+
+            // Jenis
+            const matchType =
+                transactionType === "all"
+                    ? true
+                    : transactionType === "debit"
+                        ? trx.type === "pemasukan"
+                        : trx.type === "pengeluaran";
+
+            return (
+                matchSearch &&
+                matchDate &&
+                matchMonth &&
+                matchType
+            );
+        })
+        : [];
+
+
     if (viewAllTarget) {
         return (
             <div style={{ flex: 1, padding: isMobile ? '16px' : '24px', overflowY: 'auto', boxSizing: 'border-box' }}>
@@ -133,8 +171,30 @@ export default function Laporan() {
                     </div>
                 </div>
 
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", marginBottom: "20px", display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr 1fr 1fr auto", gap: "12px", alignItems: "center" }}>
+                    <input type="text" placeholder="Cari deskripsi..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "10px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
+                    <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ padding: "10px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
+                    <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={{ padding: "10px", border: "1px solid #d1d5db", borderRadius: "8px" }} />
+                    <select value={transactionType} onChange={(e) => setTransactionType(e.target.value)} style={{ padding: "10px", border: "1px solid #d1d5db", borderRadius: "8px" }}>
+                        <option value="all">Semua</option>
+                        <option value="debit">Debit</option>
+                        <option value="kredit">Kredit</option>
+                    </select>
+                    <button onClick={() => { setSearch(""); setFilterDate(""); setFilterMonth(""); setTransactionType("all"); }} style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: "8px", padding: "10px 16px", cursor: "pointer" }}>
+                        Reset
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280', marginBottom: '20px' }}>
+                    <span>Total Data: <strong style={{ color: '#111827', fontWeight: '500' }}>{filteredTransactions.length}</strong></span>
+                    <span>•</span>
+                    <span>Debit: <strong style={{ color: '#16a34a', fontWeight: '500' }}>{filteredTransactions.filter(x => x.type === "pemasukan").reduce((a, b) => a + Number(b.amount), 0).toLocaleString("id-ID")}</strong></span>
+                    <span>•</span>
+                    <span>Kredit: <strong style={{ color: '#dc2626', fontWeight: '500' }}>{filteredTransactions.filter(x => x.type === "pengeluaran").reduce((a, b) => a + Number(b.amount), 0).toLocaleString("id-ID")}</strong></span>
+                </div>
+
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', fontSize: '14px' }}>Daftar Lengkap Transaksi ({viewAllTarget.transactions.length})</div>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', fontSize: '14px' }}>Daftar Lengkap Transaksi ({filteredTransactions.length})</div>
                     <div style={{ overflowX: 'auto', width: '100%' }}>
                         <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
@@ -156,7 +216,7 @@ export default function Laporan() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {viewAllTarget.transactions.map(t => (
+                                {filteredTransactions.map(t => (
                                     <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{t.date}</td>
                                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{t.description}</td>

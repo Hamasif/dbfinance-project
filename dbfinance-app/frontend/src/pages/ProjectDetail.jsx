@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 // FORMAT RUPIAH GLOBAL
-const formatRupiah = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');
+const formatRupiah = (n) => 'Rp ' + Math.round(Number(n)).toLocaleString('id-ID');
 const API_BASE_URL = 'http://66.96.229.251:20527/api';
 
 export default function ProjectDetail({ project, onBack }) {
@@ -86,7 +86,7 @@ export default function ProjectDetail({ project, onBack }) {
       formData.append("project_id", project.id);
       formData.append("type", isOffice ? "pengeluaran" : form.type);
       formData.append("description", form.description);
-      formData.append("amount", Number(form.amount));
+      formData.append("amount", Math.round(Number(form.amount)));
       formData.append("date", form.date);
       formData.append("category", form.category || "");
 
@@ -98,13 +98,20 @@ export default function ProjectDetail({ project, onBack }) {
       const response = await fetch(`${API_BASE_URL}/transactions`, {
         method: "POST",
         headers: {
-          Accept: "application/json"
+          Accept: "application/json",
         },
-        body: formData
+        body: formData,
       });
 
-      if (!response.ok)
-        throw new Error("Gagal menyimpan transaksi ke server");
+      // Ambil response dari Laravel
+      const result = await response.json();
+
+      console.log("Response Laravel:", result);
+
+      if (!response.ok) {
+        alert(result.message || "Terjadi kesalahan.");
+        return;
+      }
 
       setForm({
         type: isOffice ? "pengeluaran" : "pemasukan",
@@ -112,7 +119,7 @@ export default function ProjectDetail({ project, onBack }) {
         amount: "",
         date: new Date().toISOString().split("T")[0],
         category: "",
-        receipt: null
+        receipt: null,
       });
 
       setShowForm(false);
@@ -123,7 +130,7 @@ export default function ProjectDetail({ project, onBack }) {
 
       console.error(error);
 
-      alert("Terjadi masalah saat menyimpan transaksi.");
+      alert(error.message);
 
     }
   }
@@ -605,7 +612,7 @@ function DetailProjectView({
                 const withBalance = [];
 
                 sorted.forEach(t => {
-                  const transactionAmount = Number(t.amount || 0);
+                  const transactionAmount = Math.round(Number(t.amount || 0));
 
                   if (t.type === 'pengeluaran') {
                     running = running - transactionAmount;

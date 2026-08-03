@@ -6,9 +6,12 @@ export default function LaporanKantor() {
     const [allData, setAllData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMobile, setIsMobile] = useState(false);
-    
+
     // State untuk melihat rincian penuh log pengeluaran
     const [viewAllTarget, setViewAllTarget] = useState(null);
+    const [search, setSearch] = useState("");
+    const [filterDate, setFilterDate] = useState("");
+    const [filterMonth, setFilterMonth] = useState("");
 
     useEffect(() => {
         const handleResize = () => {
@@ -96,6 +99,31 @@ export default function LaporanKantor() {
         printWindow.document.close();
     };
 
+    const filteredTransactions = viewAllTarget
+        ? viewAllTarget.transactions.filter((trx) => {
+
+            const matchSearch =
+                trx.description
+                    .toLowerCase()
+                    .includes(search.toLowerCase());
+
+            const matchDate =
+                !filterDate ||
+                trx.date === filterDate;
+
+            const matchMonth =
+                !filterMonth ||
+                trx.date.startsWith(filterMonth);
+
+            return (
+                matchSearch &&
+                matchDate &&
+                matchMonth
+            );
+
+        })
+        : [];
+
     if (viewAllTarget) {
         return (
             <div style={{ flex: 1, padding: isMobile ? '16px' : '24px', overflowY: 'auto', boxSizing: 'border-box' }}>
@@ -115,8 +143,22 @@ export default function LaporanKantor() {
                     </div>
                 </div>
 
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "16px", marginBottom: "20px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr 1fr auto", gap: "12px", alignItems: "center" }}>
+                        <input type="text" placeholder="Cari deskripsi..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "13px", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                        <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={{ padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "13px", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                        <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={{ padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "13px", outline: "none", width: "100%", boxSizing: "border-box" }} />
+                        <button onClick={() => { setSearch(""); setFilterDate(""); setFilterMonth(""); }} style={{ background: "#dc2626", color: "#fff", border: "none", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>Reset</button>
+                    </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", marginBottom: "20px" }}>
+                    <span>Total Data : <strong>{filteredTransactions.length}</strong></span>
+                    <span style={{ color: "#dc2626" }}>Total Pengeluaran : <strong>{formatRupiah(filteredTransactions.reduce((a, b) => a + Number(b.amount), 0))}</strong></span>
+                </div>
+
                 <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
-                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', fontSize: '14px' }}>Seluruh Log Belanja Kategori ({viewAllTarget.transactions.length})</div>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', fontSize: '14px' }}>Seluruh Log Belanja Kategori ({filteredTransactions.length})</div>
                     <div style={{ overflowX: 'auto', width: '100%' }}>
                         <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
@@ -125,7 +167,7 @@ export default function LaporanKantor() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {viewAllTarget.transactions.map(t => (
+                                {filteredTransactions.map(t => (
                                     <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                         <td style={{ padding: '12px 16px', color: '#6b7280' }}>{t.date}</td>
                                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{t.description}</td>
@@ -163,7 +205,7 @@ export default function LaporanKantor() {
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     {allData.map(p => (
-                        <div key={p.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div key={p.id} onClick={() => setViewAllTarget(p)} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer' }}>
                             {/* Header Pos */}
                             <div style={{ padding: '14px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', background: '#f9fafb', gap: '12px' }}>
                                 <div>
@@ -178,31 +220,6 @@ export default function LaporanKantor() {
                                     <button onClick={() => handleDownloadPDF(p)} style={{ background: '#fff', border: '1px solid #d1d5db', padding: '5px 10px', borderRadius: '6px', fontSize: '11.5px', cursor: 'pointer', fontWeight: '500' }}>Cetak</button>
                                 </div>
                             </div>
-
-                            {/* Tabel Pembatasan Maksimal 5 Item */}
-                            {p.transactions.length > 0 && (
-                                <div>
-                                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                                        <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '12.5px' }}>
-                                            <tbody>
-                                                {p.transactions.slice(0, 5).map(t => (
-                                                    <tr key={t.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                                        <td style={{ padding: '10px 20px', color: '#6b7280', width: '100px' }}>{t.date}</td>
-                                                        <td style={{ padding: '10px 20px', fontWeight: '500' }}>{t.description}</td>
-                                                        <td style={{ padding: '10px 20px', color: '#4b5563' }}><span style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px' }}>{t.category || 'Operasional'}</span></td>
-                                                        <td style={{ padding: '10px 20px', fontWeight: '700', textAlign: 'right', color: '#dc2626', width: '120px' }}>-{formatRupiah(t.amount)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    {p.transactions.length > 5 && (
-                                        <div style={{ padding: '10px', borderTop: '1px solid #f3f4f6', textAlign: 'center', background: '#fff' }}>
-                                            <span onClick={() => setViewAllTarget(p)} style={{ fontSize: '12px', color: '#dc2626', fontWeight: '600', cursor: 'pointer' }}>Lihat Histori Pengeluaran Lengkap ({p.transactions.length}) →</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
                     ))}
                 </div>
