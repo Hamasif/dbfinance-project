@@ -127,23 +127,6 @@ export default function Login({ onLoginSuccess }) {
           </p>
         </div>
 
-        {/* INFO AKUN UNTUK TESTING */}
-        <div style={{
-          background: 'rgba(15, 23, 42, 0.06)',
-          border: '1px solid rgba(15, 23, 42, 0.08)',
-          borderRadius: '8px',
-          padding: '10px 12px',
-          marginBottom: '20px',
-          fontSize: '11px',
-          color: '#334155',
-          lineHeight: '1.5',
-          fontWeight: '500'
-        }}>
-          💡 <strong>Petunjuk Demo Login:</strong><br />
-          • Admin: <code>admin@dbfinance.com</code> (pass: <code>admin123</code>)<br />
-          • Operator: <code>operator@dbfinance.com</code> (pass: <code>operator123</code>)
-        </div>
-
         {/* ERROR MESSAGE BADGE */}
         {error && (
           <div style={{
