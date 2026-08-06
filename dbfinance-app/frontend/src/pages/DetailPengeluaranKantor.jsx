@@ -11,6 +11,7 @@ export default function DetailPengeluaranKantor({ onBack }) {
     amount: '',
     date: new Date().toISOString().split('T')[0],
     category: '',
+    receipt: null,
   });
 
   const [isMobile, setIsMobile] = useState(false);
@@ -30,7 +31,7 @@ export default function DetailPengeluaranKantor({ onBack }) {
     try {
       const response = await fetch(`${API_BASE_URL}/office-expenses`);
       if (!response.ok) throw new Error("Gagal mengambil data dari server");
-      
+
       const data = await response.json();
       if (isMounted) {
         setTransactions(data);
@@ -68,35 +69,38 @@ export default function DetailPengeluaranKantor({ onBack }) {
       alert('Deskripsi, jumlah, dan tanggal wajib diisi!');
       return;
     }
-    
+
     try {
-      const payload = {
-        project_id: null, // Kosongkan karena ini bukan pengeluaran milik proyek tertentu
-        type: 'pengeluaran_kantor', 
-        description: form.description,
-        amount: Number(form.amount),
-        date: form.date,
-        category: form.category || null
-      };
+      const formData = new FormData();
+
+      formData.append("project_id", "");
+      formData.append("type", "pengeluaran_kantor");
+      formData.append("description", form.description);
+      formData.append("amount", Math.round(Number(form.amount)));
+      formData.append("date", form.date);
+      formData.append("category", form.category || "");
+
+      if (form.receipt) {
+        formData.append("receipt", form.receipt);
+      }
 
       const response = await fetch(`${API_BASE_URL}/transactions`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Accept: "application/json",
         },
-        body: JSON.stringify(payload)
+        body: formData,
       });
 
       if (!response.ok) throw new Error("Gagal menyimpan data ke server");
-      
+
       setForm({
         description: '', amount: '',
-        date: new Date().toISOString().split('T')[0], category: ''
+        date: new Date().toISOString().split('T')[0], category: '', receipt: null,
       });
       setShowForm(false);
       setLoading(true);
-      
+
       await fetchTransactions(true);
     } catch (error) {
       console.error("Gagal menyimpan ke MySQL: ", error);
@@ -151,8 +155,8 @@ export default function DetailPengeluaranKantor({ onBack }) {
             </h1>
             <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Pencatatan rutin logistik, utilitas, dan kebutuhan kantor harian.</p>
           </div>
-          <button 
-            onClick={() => setShowForm(!showForm)} 
+          <button
+            onClick={() => setShowForm(!showForm)}
             style={{
               padding: '10px 16px', background: '#dc2626', color: '#fff',
               border: 'none', borderRadius: '8px', fontSize: '13px',
@@ -225,6 +229,61 @@ export default function DetailPengeluaranKantor({ onBack }) {
                 <option value="Lainnya">Lainnya</option>
               </select>
             </div>
+          </div>
+
+          <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
+            <label
+              style={{
+                fontSize: '12px',
+                fontWeight: '500',
+                color: '#374151',
+                display: 'block',
+                marginBottom: '5px',
+              }}
+            >
+              Upload Bukti / Nota
+              <span style={{ color: '#9ca3af' }}> (Opsional)</span>
+            </label>
+
+            <input
+              type="file"
+              accept=".jpg,.jpeg,.png,.pdf"
+              onChange={(e) => {
+                const file = e.target.files[0];
+
+                if (!file) return;
+
+                if (file.size > 2 * 1024 * 1024) {
+                  alert("Ukuran file maksimal 2 MB");
+                  e.target.value = "";
+                  return;
+                }
+
+                setForm({
+                  ...form,
+                  receipt: file,
+                });
+              }}
+              style={{
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                background: '#fff',
+              }}
+            />
+
+            {form.receipt && (
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  color: "#16a34a",
+                }}
+              >
+                📎 {form.receipt.name}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e5e7eb' }}>

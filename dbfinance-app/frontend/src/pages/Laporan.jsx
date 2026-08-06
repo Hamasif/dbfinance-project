@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import XLSX from "xlsx-js-style";
 
 const API_URL = 'http://66.96.229.251:20527/api/reports/projects';
 
@@ -53,7 +54,7 @@ export default function Laporan() {
     const grandPengeluaran = allData.reduce((s, d) => s + Number(d.totalPengeluaran || 0), 0);
     const grandSisa = grandAnggaran - grandPengeluaran;
 
-    const handleDownloadPDF = (data) => {
+    const handleDownloadPDF = (data, transactions = data.transactions) => {
         const printWindow = window.open('', '_blank');
         const htmlContent = `
             <html>
@@ -89,9 +90,9 @@ export default function Laporan() {
                     <div><strong>Persentase Penyerapan:</strong> ${data.persen}%</div>
                 </div>
                 <div class="stats-grid">
-                    <div class="stats-box"><div class="stat-label">Total Pemasukan</div><div class="stat-value" style="color: #15803d;">${formatRupiah(data.totalPemasukan)}</div></div>
-                    <div class="stats-box"><div class="stat-label">Total Pengeluaran</div><div class="stat-value" style="color: #dc2626;">${formatRupiah(data.totalPengeluaran)}</div></div>
-                    <div class="stats-box"><div class="stat-label">Sisa Anggaran</div><div class="stat-value" style="color: #1d4ed8;">${formatRupiah(data.sisaAnggaran)}</div></div>
+                    <div class="stats-box"><div class="stat-label">Total Pemasukan</div><div class="stat-value" style="color: #15803d;">${formatRupiah(transactions.filter(t => t.type === "pemasukan").reduce((a, b) => a + Number(b.amount), 0))}</div></div>
+                    <div class="stats-box"><div class="stat-label">Total Pengeluaran</div><div class="stat-value" style="color: #dc2626;">${formatRupiah(transactions.filter(t => t.type === "pengeluaran").reduce((a, b) => a + Number(b.amount), 0))}</div></div>
+                    <div class="stats-box"><div class="stat-label">Sisa Anggaran</div><div class="stat-value" style="color: #1d4ed8;">${formatRupiah(Number(data.budget_amount) - transactions.filter(t => t.type === "pengeluaran").reduce((a, b) => a + Number(b.amount), 0))}</div></div>
                 </div>
                 <h3>Daftar Seluruh Riwayat Transaksi</h3>
                 <table>
@@ -99,7 +100,7 @@ export default function Laporan() {
                         <tr><th>Tanggal</th><th>Deskripsi</th><th>Debit</th><th>Kredit</th><th>Bukti</th></tr>
                     </thead>
                     <tbody>
-                        ${data.transactions.map(t => `
+                        ${transactions.map(t => `
                             <tr>
                                 <td>${t.date}</td>
                                 <td><strong>${t.description}</strong></td>
@@ -116,6 +117,167 @@ export default function Laporan() {
         `;
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+    };
+
+    const styles = {
+        title: {
+            font: { bold: true, sz: 18 },
+            alignment: { horizontal: "center" }
+        },
+
+        section: {
+            font: { bold: true, sz: 12 },
+            fill: {
+                fgColor: { rgb: "EAF2FF" }
+            }
+        },
+
+        header: {
+            font: {
+                bold: true,
+                color: { rgb: "FFFFFF" }
+            },
+            fill: {
+                fgColor: { rgb: "185FA5" }
+            },
+            alignment: {
+                horizontal: "center"
+            },
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        },
+
+        cell: {
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        },
+
+        pemasukan: {
+            font: {
+                bold: true,
+                color: { rgb: "15803D" }
+            }
+        },
+
+        pengeluaran: {
+            font: {
+                bold: true,
+                color: { rgb: "DC2626" }
+            }
+        }
+    };
+
+    const handleDownloadExcel = (
+        data,
+        transactions = data.transactions
+    ) => {
+
+        const wb = XLSX.utils.book_new();
+
+        const ws = XLSX.utils.aoa_to_sheet([]);
+
+        XLSX.utils.sheet_add_aoa(ws, [
+            [`LAPORAN KEUANGAN PROJECT`],
+            [],
+            ["Nama Project", data.display_name],
+            ["Penanggung Jawab", data.sub_label],
+            ["Plafon Anggaran", Number(data.budget_amount)],
+            ["Persentase Penyerapan", `${data.persen}%`],
+            [],
+            [
+                "TOTAL PEMASUKAN",
+                transactions
+                    .filter(x => x.type === "pemasukan")
+                    .reduce((a, b) => a + Number(b.amount), 0)
+            ],
+            [
+                "TOTAL PENGELUARAN",
+                transactions
+                    .filter(x => x.type === "pengeluaran")
+                    .reduce((a, b) => a + Number(b.amount), 0)
+            ],
+            [
+                "SISA ANGGARAN",
+                Number(data.budget_amount) -
+                transactions
+                    .filter(x => x.type === "pengeluaran")
+                    .reduce((a, b) => a + Number(b.amount), 0)
+            ],
+            [],
+            [
+                "Tanggal",
+                "Deskripsi",
+                "Debit",
+                "Kredit",
+                "Bukti"
+            ]
+        ]);
+
+        const startRow = 13;
+
+        transactions.forEach((t, i) => {
+
+            XLSX.utils.sheet_add_aoa(
+                ws,
+                [[
+                    t.date,
+                    t.description,
+                    t.type === "pemasukan"
+                        ? Number(t.amount)
+                        : "",
+                    t.type === "pengeluaran"
+                        ? Number(t.amount)
+                        : "",
+                    t.receipt
+                        ? `http://66.96.229.251:20527/storage/${t.receipt}`
+                        : "-"
+                ]],
+                {
+                    origin: `A${startRow + i}`
+                }
+            );
+        });
+
+        ws["!cols"] = [
+            { wch: 15 },
+            { wch: 40 },
+            { wch: 18 },
+            { wch: 18 },
+            { wch: 50 }
+        ];
+
+        ws["!merges"] = [
+            {
+                s: { r: 0, c: 0 },
+                e: { r: 0, c: 4 }
+            }
+        ];
+
+        ws["A1"].s = styles.title;
+
+        ["A12", "B12", "C12", "D12", "E12"]
+            .forEach(cell => {
+                ws[cell].s = styles.header;
+            });
+
+        XLSX.utils.book_append_sheet(
+            wb,
+            ws,
+            "Laporan Project"
+        );
+
+        XLSX.writeFile(
+            wb,
+            `Laporan-${data.display_name}.xlsx`
+        );
     };
 
     const filteredTransactions = viewAllTarget
@@ -167,7 +329,50 @@ export default function Laporan() {
                             <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>{viewAllTarget.display_name}</h2>
                             <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#6b7280' }}>{viewAllTarget.sub_label} &nbsp;·&nbsp; Anggaran: {formatRupiah(viewAllTarget.budget_amount)}</p>
                         </div>
-                        <button onClick={() => handleDownloadPDF(viewAllTarget)} style={{ background: '#1e293b', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: '500' }}>📥 Cetak PDF</button>
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: "8px"
+                            }}
+                        >
+                            <button
+                                onClick={() =>
+                                    handleDownloadPDF(
+                                        viewAllTarget,
+                                        filteredTransactions
+                                    )
+                                }
+                                style={{
+                                    background: "#1e293b",
+                                    color: "#fff",
+                                    border: "none",
+                                    padding: "8px 14px",
+                                    borderRadius: "6px",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                📄 PDF
+                            </button>
+
+                            <button
+                                onClick={() =>
+                                    handleDownloadExcel(
+                                        viewAllTarget,
+                                        filteredTransactions
+                                    )
+                                }
+                                style={{
+                                    background: "#15803d",
+                                    color: "#fff",
+                                    border: "none",
+                                    padding: "8px 14px",
+                                    borderRadius: "6px",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                📊 Excel
+                            </button>
+                        </div>
                     </div>
                 </div>
 

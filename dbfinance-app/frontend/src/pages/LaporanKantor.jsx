@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import XLSX from "xlsx-js-style";
 
 const API_URL = 'http://66.96.229.251:20527/api/reports/office';
 
@@ -50,7 +51,7 @@ export default function LaporanKantor() {
 
     const grandPengeluaran = allData.reduce((s, d) => s + Number(d.totalPengeluaran || 0), 0);
 
-    const handleDownloadPDF = (data) => {
+    const handleDownloadPDF = (data, transactions) => {
         const printWindow = window.open('', '_blank');
         const htmlContent = `
             <html>
@@ -76,17 +77,23 @@ export default function LaporanKantor() {
                     <div><strong>Pos Kategori:</strong> ${data.display_name}</div>
                     <div><strong>Penanggung Jawab Kebutuhan:</strong> ${data.sub_label}</div>
                 </div>
-                <div class="total-box">TOTAL PENGELUARAN AKTIF: ${formatRupiah(data.totalPengeluaran)}</div>
+                <div class="total-box">TOTAL PENGELUARAN AKTIF: ${formatRupiah(transactions.reduce((a, b) => a + Number(b.amount), 0))}</div>
                 <h3>Histori Detail Pembelian Logistik</h3>
                 <table>
-                    <thead><tr><th>Tanggal</th><th>Deskripsi Kebutuhan Kantor</th><th>Kategori</th><th>Jumlah</th></tr></thead>
+                    <thead><tr><th>Tanggal</th><th>Deskripsi Kebutuhan Kantor</th><th>Kategori</th><th>Jumlah</th><th>Bukti</th></tr></thead>
                     <tbody>
-                        ${data.transactions.map(t => `
+                        ${transactions.map(t => `
                             <tr>
                                 <td>${t.date}</td>
                                 <td><strong>${t.description}</strong></td>
                                 <td>${t.category || 'Operasional'}</td>
                                 <td><span style="color: #dc2626; font-weight: bold;">-${formatRupiah(t.amount)}</span></td>
+                                <td style="text-align:center;">
+                                    ${t.receipt
+                ? `<a href="http://66.96.229.251:20527/storage/${t.receipt}" target="_blank">📎 Lihat</a>`
+                : "-"
+            }
+                                </td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -97,6 +104,149 @@ export default function LaporanKantor() {
         `;
         printWindow.document.write(htmlContent);
         printWindow.document.close();
+    };
+
+    const styles = {
+        title: {
+            font: { bold: true, sz: 18 },
+            alignment: { horizontal: "center" }
+        },
+
+        section: {
+            font: { bold: true, sz: 12 },
+            fill: {
+                fgColor: { rgb: "EAF2FF" }
+            }
+        },
+
+        header: {
+            font: {
+                bold: true,
+                color: { rgb: "FFFFFF" }
+            },
+            fill: {
+                fgColor: { rgb: "185FA5" }
+            },
+            alignment: {
+                horizontal: "center"
+            },
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        },
+
+        cell: {
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        },
+
+        pemasukan: {
+            font: {
+                bold: true,
+                color: { rgb: "15803D" }
+            }
+        },
+
+        pengeluaran: {
+            font: {
+                bold: true,
+                color: { rgb: "DC2626" }
+            }
+        }
+    };
+
+    const handleDownloadExcel = (
+        data,
+        transactions = data.transactions
+    ) => {
+
+        const wb = XLSX.utils.book_new();
+
+        const ws = XLSX.utils.aoa_to_sheet([]);
+
+        XLSX.utils.sheet_add_aoa(ws, [
+            ["REKAP OPERASIONAL KANTOR"],
+            [],
+            ["Pos Kategori", data.display_name],
+            ["Penanggung Jawab", data.sub_label],
+            [],
+            [
+                "TOTAL PENGELUARAN",
+                transactions.reduce(
+                    (a, b) => a + Number(b.amount),
+                    0
+                )
+            ],
+            [],
+            [
+                "Tanggal",
+                "Deskripsi",
+                "Kategori",
+                "Jumlah",
+                "Bukti"
+            ]
+        ]);
+
+        const startRow = 9;
+
+        transactions.forEach((t, i) => {
+
+            XLSX.utils.sheet_add_aoa(
+                ws,
+                [[
+                    t.date,
+                    t.description,
+                    t.category || "Operasional",
+                    Number(t.amount),
+                    t.receipt
+                        ? `http://66.96.229.251:20527/storage/${t.receipt}`
+                        : "-"
+                ]],
+                {
+                    origin: `A${startRow + i}`
+                }
+            );
+        });
+
+        ws["!cols"] = [
+            { wch: 15 },
+            { wch: 40 },
+            { wch: 20 },
+            { wch: 18 },
+            { wch: 50 }
+        ];
+
+        ws["!merges"] = [
+            {
+                s: { r: 0, c: 0 },
+                e: { r: 0, c: 4 }
+            }
+        ];
+
+        ws["A1"].s = styles.title;
+
+        ["A8", "B8", "C8", "D8", "E8"]
+            .forEach(cell => {
+                ws[cell].s = styles.header;
+            });
+
+        XLSX.utils.book_append_sheet(
+            wb,
+            ws,
+            "Operasional Kantor"
+        );
+
+        XLSX.writeFile(
+            wb,
+            `Operasional-${data.display_name}.xlsx`
+        );
     };
 
     const filteredTransactions = viewAllTarget
@@ -139,7 +289,50 @@ export default function LaporanKantor() {
                             <h2 style={{ fontSize: '17px', fontWeight: '700', margin: 0 }}>Log Pengeluaran: {viewAllTarget.display_name}</h2>
                             <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#6b7280' }}>{viewAllTarget.sub_label} &nbsp;·&nbsp; Total Terpakai: <strong style={{ color: '#dc2626' }}>{formatRupiah(viewAllTarget.totalPengeluaran)}</strong></p>
                         </div>
-                        <button onClick={() => handleDownloadPDF(viewAllTarget)} style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>📥 Unduh Berkas</button>
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: "8px"
+                            }}
+                        >
+                            <button
+                                onClick={() =>
+                                    handleDownloadPDF(
+                                        viewAllTarget,
+                                        filteredTransactions
+                                    )
+                                }
+                                style={{
+                                    background: "#dc2626",
+                                    color: "#fff",
+                                    border: "none",
+                                    padding: "8px 14px",
+                                    borderRadius: "6px",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                📄 PDF
+                            </button>
+
+                            <button
+                                onClick={() =>
+                                    handleDownloadExcel(
+                                        viewAllTarget,
+                                        filteredTransactions
+                                    )
+                                }
+                                style={{
+                                    background: "#15803d",
+                                    color: "#fff",
+                                    border: "none",
+                                    padding: "8px 14px",
+                                    borderRadius: "6px",
+                                    cursor: "pointer"
+                                }}
+                            >
+                                📊 Excel
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -163,7 +356,7 @@ export default function LaporanKantor() {
                         <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
                                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                                    {['Tanggal', 'Deskripsi Pengeluaran', 'Kategori', 'Jumlah'].map(h => <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase' }}>{h}</th>)}
+                                    {['Tanggal', 'Deskripsi Pengeluaran', 'Kategori', 'Jumlah', 'Bukti'].map(h => <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '11px', color: '#9ca3af', textTransform: 'uppercase' }}>{h}</th>)}
                                 </tr>
                             </thead>
                             <tbody>
@@ -173,6 +366,24 @@ export default function LaporanKantor() {
                                         <td style={{ padding: '12px 16px', fontWeight: '500' }}>{t.description}</td>
                                         <td style={{ padding: '12px 16px' }}><span style={{ background: '#f3f4f6', padding: '2px 8px', borderRadius: '20px', fontSize: '11px' }}>{t.category || 'Operasional'}</span></td>
                                         <td style={{ padding: '12px 16px', fontWeight: '700', color: '#dc2626' }}>-{formatRupiah(t.amount)}</td>
+                                        <td style={{ padding: '12px 16px' }}>
+                                            {t.receipt ? (
+                                                <a
+                                                    href={`http://66.96.229.251:20527/storage/${t.receipt}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    style={{
+                                                        color: "#185FA5",
+                                                        fontWeight: "600",
+                                                        textDecoration: "none"
+                                                    }}
+                                                >
+                                                    📎 Lihat
+                                                </a>
+                                            ) : (
+                                                <span style={{ color: "#9ca3af" }}>-</span>
+                                            )}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

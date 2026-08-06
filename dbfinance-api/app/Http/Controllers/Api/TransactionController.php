@@ -25,7 +25,7 @@ class TransactionController extends Controller
     {
         $request->validate([
             'project_id'  => 'required|exists:projects,id',
-            'type'        => 'required|in:pemasukan,pengeluaran',
+            'type'        => 'required|in:pemasukan,pengeluaran,pengeluaran_kantor',
             'description' => 'required|string|max:255',
             'amount'      => 'required|numeric|min:0',
             'date'        => 'required|date',
