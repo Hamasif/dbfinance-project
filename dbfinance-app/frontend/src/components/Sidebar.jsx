@@ -182,30 +182,73 @@ export default function Sidebar({
 
         {/* Nav Links */}
         <nav style={{ padding: '18px 12px', flex: 1 }}>
-          <div style={{ fontSize: '10px', color: colors.textLabel, padding: '0 8px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>
+
+          <div style={{
+            fontSize: '10px',
+            color: colors.textLabel,
+            padding: '0 8px',
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            fontWeight: '600'
+          }}>
             Main
           </div>
 
-          {/* Menu Home (Admin & Operator) */}
+          {/* HOME - Semua Role */}
           {menuItem('Home', '🏠', 'home', onHomeClick)}
 
-          {/* Menu Finansial Kantor (Khusus Admin) */}
-          {userRole === 'admin' && menuItem('Kas Kantor', '🏢', 'office', onOfficeClick)}
-          {userRole === 'admin' && menuItem('Buku Besar', '📖', 'buku_besar', onBukuBesarClick)}
+          {/* KAS KANTOR - ADMIN SAJA */}
+          {userRole === 'admin' &&
+            menuItem('Kas Kantor', '🏢', 'office', onOfficeClick)}
 
-          <div style={{ fontSize: '10px', color: colors.textLabel, padding: '0 8px', marginTop: '20px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>
+          {/* BUKU BESAR - ADMIN & HRD */}
+          {(userRole === 'admin' || userRole === 'hrd') &&
+            menuItem('Buku Besar', '📖', 'buku_besar', onBukuBesarClick)}
+
+          <div style={{
+            fontSize: '10px',
+            color: colors.textLabel,
+            padding: '0 8px',
+            marginTop: '20px',
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            fontWeight: '600'
+          }}>
             Laporan Rekap
           </div>
 
-          {/* 2. Pemisahan Menu Laporan */}
-          {/* Laporan Project selalu bisa dilihat Staff Operator & Admin */}
+          {/* LAPORAN PROJECT - SEMUA ROLE */}
           {menuItem('Laporan Project', '📊', 'laporan', onLaporanClick)}
 
-          {/* Laporan Kantor dikunci khusus Admin saja */}
-          {userRole === 'admin' && menuItem('Laporan Kantor', '📉', 'laporan_kantor', onLaporanKantorClick)}
+          {/* LAPORAN KANTOR - ADMIN SAJA */}
+          {userRole === 'admin' &&
+            menuItem(
+              'Laporan Kantor',
+              '📉',
+              'laporan_kantor',
+              onLaporanKantorClick
+            )}
 
-          {userRole === 'admin' && menuItem('Laba Rugi', '📈', 'laba_rugi', onLabaRugiClick)}
-          {userRole === 'admin' && menuItem('Neraca', '⚖️', 'neraca', onNeracaClick)}
+          {/* LABA RUGI - ADMIN & HRD */}
+          {(userRole === 'admin' || userRole === 'hrd') &&
+            menuItem(
+              'Laba Rugi',
+              '📈',
+              'laba_rugi',
+              onLabaRugiClick
+            )}
+
+          {/* NERACA - ADMIN & HRD */}
+          {(userRole === 'admin' || userRole === 'hrd') &&
+            menuItem(
+              'Neraca',
+              '⚖️',
+              'neraca',
+              onNeracaClick
+            )}
+
         </nav>
 
         {/* User Info & Fitur Keluar */}
@@ -229,7 +272,7 @@ export default function Sidebar({
                   {userRole || 'User'}
                 </div>
                 <div style={{ fontSize: '10.5px', color: colors.textMuted }}>
-                  {userRole === 'admin' ? 'Administrator' : 'Staff Operator'}
+                  {userRole === 'admin' ? 'Administrator' : userRole === 'hrd' ? 'Human Resources' : 'Staff Operator'}
                 </div>
               </div>
             </div>

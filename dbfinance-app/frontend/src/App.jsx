@@ -7,20 +7,20 @@ import ProjectDetail from './pages/ProjectDetail';
 import Laporan from './pages/Laporan';
 import LaporanKantor from './pages/LaporanKantor'; // <-- 1. Import halaman Laporan Kantor baru
 import BukuBesar from './pages/BukuBesar';
-import LabaRugi from './pages/LabaRugi'; 
-import Neraca from './pages/Neraca'; 
+import LabaRugi from './pages/LabaRugi';
+import Neraca from './pages/Neraca';
 import './index.css';
 
 export default function App() {
   // State Autentikasi Login & Role Pengguna ('admin' atau 'operator')
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null); 
-  
+  const [userRole, setUserRole] = useState(null);
+
   // State Navigasi Halaman
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedProject, setSelectedProject] = useState(null);
-  const [backTarget, setBackTarget] = useState('home'); 
-  
+  const [backTarget, setBackTarget] = useState('home');
+
   const [isMobile, setIsMobile] = useState(false);
 
   // Deteksi ukuran layar responsif
@@ -53,8 +53,9 @@ export default function App() {
   };
 
   const goToOffice = () => {
-    // Proteksi: Operator tidak boleh membuka Pengeluaran Kantor
-    if (userRole === 'operator') return;
+    // Pengeluaran Kantor hanya untuk Admin
+    if (userRole !== 'admin') return;
+
     setCurrentPage('office');
     setSelectedProject(null);
   };
@@ -73,23 +74,25 @@ export default function App() {
 
   // 2. Fungsi Navigasi & Proteksi: Operator tidak boleh membuka Laporan Kantor
   const goToLaporanKantor = () => {
-    if (userRole === 'operator') return;
+    // Laporan Kantor hanya untuk Admin
+    if (userRole !== 'admin') return;
+
     setCurrentPage('laporan_kantor');
     setSelectedProject(null);
   };
 
-  const goToLabaRugi = () => { 
+  const goToLabaRugi = () => {
     // Proteksi: Operator tidak boleh membuka Laba Rugi
     if (userRole === 'operator') return;
-    setCurrentPage('laba_rugi'); 
-    setSelectedProject(null); 
+    setCurrentPage('laba_rugi');
+    setSelectedProject(null);
   };
 
-  const goToNeraca = () => { 
+  const goToNeraca = () => {
     // Fungsi Navigasi & Proteksi: Operator tidak boleh membuka Neraca
     if (userRole === 'operator') return;
-    setCurrentPage('neraca'); 
-    setSelectedProject(null); 
+    setCurrentPage('neraca');
+    setSelectedProject(null);
   };
 
   const handleLogout = () => {
@@ -108,9 +111,9 @@ export default function App() {
 
   // --- DASHBOARD UTAMA (SETELAH BERHASIL LOGIN) ---
   return (
-    <div className="app-container" style={{ 
-      display: 'flex', 
-      flexDirection: isMobile ? 'column' : 'row', 
+    <div className="app-container" style={{
+      display: 'flex',
+      flexDirection: isMobile ? 'column' : 'row',
       minHeight: '100vh',
       background: '#f8fafc',
       width: '100%'
@@ -122,15 +125,15 @@ export default function App() {
         onLaporanClick={goToLaporan}
         onLaporanKantorClick={goToLaporanKantor} // <-- 3. Hubungkan fungsi klik Laporan Kantor ke Sidebar
         onLabaRugiClick={goToLabaRugi}
-        onNeracaClick={goToNeraca} 
+        onNeracaClick={goToNeraca}
         onLogoutClick={handleLogout}
         activePage={currentPage}
-        userRole={userRole} 
+        userRole={userRole}
       />
-      
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
+
+      <div style={{
+        flex: 1,
+        display: 'flex',
         flexDirection: 'column',
         width: '100%',
         boxSizing: 'border-box'
@@ -143,19 +146,19 @@ export default function App() {
         {currentPage === 'office' && userRole === 'admin' && (
           <PengeluaranKantor onSelectCategory={(c) => goToDetail(c, 'office')} />
         )}
-        
+
         {currentPage === 'detail' && (
-          <ProjectDetail 
-            project={selectedProject} 
-            onBack={backTarget === 'office' ? goToOffice : goToHome} 
+          <ProjectDetail
+            project={selectedProject}
+            onBack={backTarget === 'office' ? goToOffice : goToHome}
             userRole={userRole}
           />
         )}
 
-        {currentPage === 'buku_besar' && userRole === 'admin' && (
+        {currentPage === 'buku_besar' && (userRole === 'admin' || userRole === 'hrd') && (
           <BukuBesar />
         )}
-        
+
         {/* Laporan Khusus Project */}
         {currentPage === 'laporan' && (
           <Laporan />
@@ -165,12 +168,12 @@ export default function App() {
         {currentPage === 'laporan_kantor' && userRole === 'admin' && (
           <LaporanKantor />
         )}
-        
-        {currentPage === 'laba_rugi' && userRole === 'admin' && (
+
+        {currentPage === 'laba_rugi' && (userRole === 'admin' || userRole === 'hrd') && (
           <LabaRugi />
         )}
 
-        {currentPage === 'neraca' && userRole === 'admin' && (
+        {currentPage === 'neraca' && (userRole === 'admin' || userRole === 'hrd') && (
           <Neraca />
         )}
       </div>

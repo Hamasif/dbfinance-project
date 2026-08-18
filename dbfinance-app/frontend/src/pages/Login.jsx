@@ -35,6 +35,8 @@ export default function Login({ onLoginSuccess }) {
         if (onLoginSuccess) onLoginSuccess({ email: form.email, role: 'admin' });
       } else if (form.email === 'operator@dbfinance.com' && form.password === 'operator123') {
         if (onLoginSuccess) onLoginSuccess({ email: form.email, role: 'operator' });
+      } else if (form.email === 'hrd@dbfinance.com' && form.password === 'hrd123') {
+        if (onLoginSuccess) onLoginSuccess({ email: form.email, role: 'hrd' });
       } else {
         setError('Email atau password salah. Silakan coba kembali.');
       }
