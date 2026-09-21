@@ -10,6 +10,7 @@ export default function TimelineProject() {
   const [timelines, setTimelines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const [formData, setFormData] = useState({
     step_name: '',
@@ -20,6 +21,17 @@ export default function TimelineProject() {
   });
 
   const [isMobile, setIsMobile] = useState(false);
+
+  // Helper: Menghitung sisa hari menuju tanggal mulai
+  const getDaysRemaining = (startDateStr) => {
+    if (!startDateStr) return 999;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(startDateStr);
+    targetDate.setHours(0, 0, 0, 0);
+    const diffTime = targetDate - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
   // 1. Deteksi ukuran layar responsif
   useEffect(() => {
@@ -106,6 +118,37 @@ export default function TimelineProject() {
       isMounted = false;
     };
   }, [selectedProjectId]);
+
+  // 5. Update Notifikasi Pengingat H-7 saat data timelines diperbarui
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadNotifications = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/project-timelines/notifications`);
+        const notifData = Array.isArray(res.data) ? res.data : (res.data.data || []);
+        if (isMounted) {
+          setNotifications(notifData);
+        }
+      } catch {
+        // Fallback: Jika endpoint di backend belum di-deploy, hitung langsung dari state timelines
+        if (isMounted) {
+          const upcomingNotifs = timelines.filter(item => {
+            if (item.status === 'completed') return false;
+            const daysLeft = getDaysRemaining(item.start_date);
+            return daysLeft >= 0 && daysLeft <= 7;
+          });
+          setNotifications(upcomingNotifs);
+        }
+      }
+    };
+
+    loadNotifications();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [timelines]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -207,6 +250,49 @@ export default function TimelineProject() {
           {showForm ? '✕ Tutup Form' : '+ Tambah Tahapan'}
         </button>
       </div>
+
+      {/* Banner Alert Notifikasi Pengingat H-7 */}
+      {notifications.length > 0 && (
+        <div style={{
+          background: '#FFFBEB',
+          border: '1px solid #FCD34D',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          marginBottom: '24px',
+          boxSizing: 'border-box',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '16px' }}>🔔</span>
+            <div style={{ fontSize: '13.5px', fontWeight: '700', color: '#92400E' }}>
+              Peringatan Jadwal H-7 ({notifications.length} Tahapan Mendekati Tenggat)
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '24px' }}>
+            {notifications.map((notif) => {
+              const daysLeft = getDaysRemaining(notif.start_date);
+              return (
+                <div key={notif.id} style={{ fontSize: '12.5px', color: '#78350F', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontWeight: '600' }}>• {notif.step_name}</span>
+                  <span style={{ color: '#B45309' }}>
+                    ({notif.start_date})
+                  </span>
+                  <span style={{
+                    fontSize: '10px',
+                    background: daysLeft <= 1 ? '#FEE2E2' : '#FEF3C7',
+                    color: daysLeft <= 1 ? '#991B1B' : '#92400E',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    fontWeight: '700'
+                  }}>
+                    {daysLeft === 0 ? 'Mulai Hari Ini!' : daysLeft === 1 ? 'Besok!' : `${daysLeft} Hari Lagi`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats & Project Picker */}
       <div style={{
@@ -413,39 +499,62 @@ export default function TimelineProject() {
               </tr>
             </thead>
             <tbody>
-              {timelines.map((item, i) => (
-                <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '14px 16px', color: '#9ca3af' }}>
-                    {String(i + 1).padStart(2, '0')}
-                  </td>
+              {timelines.map((item, i) => {
+                const daysLeft = getDaysRemaining(item.start_date);
+                const isH7 = item.status !== 'completed' && daysLeft >= 0 && daysLeft <= 7;
 
-                  <td style={{ padding: '14px 16px', fontWeight: '600', color: '#111827' }}>
-                    {item.step_name}
-                  </td>
+                return (
+                  <tr key={item.id} style={{
+                    borderBottom: '1px solid #f3f4f6',
+                    background: isH7 ? '#FFFBEB' : 'transparent'
+                  }}>
+                    <td style={{ padding: '14px 16px', color: '#9ca3af' }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </td>
 
-                  <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'nowrap' }}>
-                    📅 {item.start_date} {item.end_date ? `s/d ${item.end_date}` : ''}
-                  </td>
+                    <td style={{ padding: '14px 16px', fontWeight: '600', color: '#111827' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {item.step_name}
+                        {isH7 && (
+                          <span style={{
+                            fontSize: '9.5px',
+                            background: '#FEF3C7',
+                            color: '#92400E',
+                            border: '1px solid #FCD34D',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            fontWeight: '700'
+                          }}>
+                            H-{daysLeft}
+                          </span>
+                        )}
+                      </div>
+                    </td>
 
-                  <td style={{ padding: '14px 16px' }}>
-                    {getStatusBadge(item.status)}
-                  </td>
+                    <td style={{ padding: '14px 16px', color: '#4b5563', whiteSpace: 'nowrap' }}>
+                      📅 {item.start_date} {item.end_date ? `s/d ${item.end_date}` : ''}
+                    </td>
 
-                  <td style={{ padding: '14px 16px', color: '#6b7280', fontSize: '12.5px', maxWidth: '280px' }}>
-                    {item.description || '-'}
-                  </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      {getStatusBadge(item.status)}
+                    </td>
 
-                  <td style={{ padding: '14px 16px' }}>
-                    <button onClick={() => handleDelete(item.id)} style={{
-                      padding: '6px 12px', border: '1px solid #fca5a5',
-                      background: '#fff', color: '#ef4444', borderRadius: '6px',
-                      fontSize: '12px', cursor: 'pointer'
-                    }}>
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    <td style={{ padding: '14px 16px', color: '#6b7280', fontSize: '12.5px', maxWidth: '280px' }}>
+                      {item.description || '-'}
+                    </td>
+
+                    <td style={{ padding: '14px 16px' }}>
+                      <button onClick={() => handleDelete(item.id)} style={{
+                        padding: '6px 12px', border: '1px solid #fca5a5',
+                        background: '#fff', color: '#ef4444', borderRadius: '6px',
+                        fontSize: '12px', cursor: 'pointer'
+                      }}>
+                        Hapus
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

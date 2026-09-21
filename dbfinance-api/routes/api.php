@@ -35,3 +35,4 @@ Route::post('/neraca-settings', [NeracaController::class, 'update']);
 Route::get('/projects/{projectId}/timelines', [ProjectTimelineController::class, 'indexByProject']);
 Route::post('/project-timelines', [ProjectTimelineController::class, 'store']);
 Route::delete('/project-timelines/{id}', [ProjectTimelineController::class, 'destroy']);
+Route::get('/project-timelines/notifications', [App\Http\Controllers\Api\ProjectTimelineController::class, 'getNotifications']);
