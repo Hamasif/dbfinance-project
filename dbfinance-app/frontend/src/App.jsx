@@ -5,8 +5,9 @@ import Home from './pages/Home';
 import PengeluaranKantor from './pages/PengeluaranKantor';
 import ProjectDetail from './pages/ProjectDetail';
 import Laporan from './pages/Laporan';
-import LaporanKantor from './pages/LaporanKantor'; // <-- 1. Import halaman Laporan Kantor baru
+import LaporanKantor from './pages/LaporanKantor';
 import BukuBesar from './pages/BukuBesar';
+import TimelineProject from './pages/TimelineProject'; // Import Komponen Timeline
 import LabaRugi from './pages/LabaRugi';
 import Neraca from './pages/Neraca';
 import './index.css';
@@ -40,7 +41,7 @@ export default function App() {
     setCurrentPage('home');     // default halaman awal setelah masuk
   };
 
-  // Fungsi Navigasi Alur Aplikasi dengan Proteksi Role Operator
+  // Fungsi Navigasi Alur Aplikasi
   const goToDetail = (project, source = 'home') => {
     setSelectedProject(project);
     setBackTarget(source);
@@ -53,17 +54,20 @@ export default function App() {
   };
 
   const goToOffice = () => {
-    // Pengeluaran Kantor hanya untuk Admin
     if (userRole !== 'admin') return;
-
     setCurrentPage('office');
     setSelectedProject(null);
   };
 
   const goToBukuBesar = () => {
-    // Proteksi: Operator tidak boleh membuka Buku Besar
     if (userRole === 'operator') return;
     setCurrentPage('buku_besar');
+    setSelectedProject(null);
+  };
+
+  // --- Fungsi Navigasi Timeline Project ---
+  const goToTimeline = () => {
+    setCurrentPage('timeline');
     setSelectedProject(null);
   };
 
@@ -72,24 +76,19 @@ export default function App() {
     setSelectedProject(null);
   };
 
-  // 2. Fungsi Navigasi & Proteksi: Operator tidak boleh membuka Laporan Kantor
   const goToLaporanKantor = () => {
-    // Laporan Kantor hanya untuk Admin
     if (userRole !== 'admin') return;
-
     setCurrentPage('laporan_kantor');
     setSelectedProject(null);
   };
 
   const goToLabaRugi = () => {
-    // Proteksi: Operator tidak boleh membuka Laba Rugi
     if (userRole === 'operator') return;
     setCurrentPage('laba_rugi');
     setSelectedProject(null);
   };
 
   const goToNeraca = () => {
-    // Fungsi Navigasi & Proteksi: Operator tidak boleh membuka Neraca
     if (userRole === 'operator') return;
     setCurrentPage('neraca');
     setSelectedProject(null);
@@ -122,8 +121,9 @@ export default function App() {
         onHomeClick={goToHome}
         onOfficeClick={goToOffice}
         onBukuBesarClick={goToBukuBesar}
+        onTimelineClick={goToTimeline} // <-- Pass fungsi handler ke Sidebar
         onLaporanClick={goToLaporan}
-        onLaporanKantorClick={goToLaporanKantor} // <-- 3. Hubungkan fungsi klik Laporan Kantor ke Sidebar
+        onLaporanKantorClick={goToLaporanKantor}
         onLabaRugiClick={goToLabaRugi}
         onNeracaClick={goToNeraca}
         onLogoutClick={handleLogout}
@@ -142,7 +142,6 @@ export default function App() {
           <Home onSelectProject={(p) => goToDetail(p, 'home')} userRole={userRole} />
         )}
 
-        {/* Proteksi Render halaman: hanya tampil jika user adalah admin */}
         {currentPage === 'office' && userRole === 'admin' && (
           <PengeluaranKantor onSelectCategory={(c) => goToDetail(c, 'office')} />
         )}
@@ -159,12 +158,15 @@ export default function App() {
           <BukuBesar />
         )}
 
-        {/* Laporan Khusus Project */}
+        {/* --- Render Halaman Timeline Project --- */}
+        {currentPage === 'timeline' && (
+          <TimelineProject />
+        )}
+
         {currentPage === 'laporan' && (
           <Laporan />
         )}
 
-        {/* 4. Kondisi Render Halaman Laporan Pengeluaran Kantor (Khusus Admin) */}
         {currentPage === 'laporan_kantor' && userRole === 'admin' && (
           <LaporanKantor />
         )}

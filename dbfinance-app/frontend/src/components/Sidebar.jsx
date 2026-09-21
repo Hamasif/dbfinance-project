@@ -4,8 +4,9 @@ import fotoSaya from '../assets/foto-saya.jpg';
 export default function Sidebar({
   onHomeClick,
   onOfficeClick,
+  onTimelineClick, // <-- Menerima prop baru untuk Timeline Project
   onLaporanClick,
-  onLaporanKantorClick, // <-- 1. Menerima prop baru untuk Laporan Kantor
+  onLaporanKantorClick,
   onBukuBesarClick,
   onLabaRugiClick,
   onNeracaClick,
@@ -28,12 +29,11 @@ export default function Sidebar({
   }, []);
 
   const handleMenuClick = (callback) => {
-    callback();
+    if (callback) callback();
     if (isMobile) setIsOpen(false);
   };
 
-  // Palet biru turunan dari logo: navy dalam untuk background,
-  // biru cerah untuk aksen/aktif state, dan biru pucat untuk hover halus.
+  // Palet biru turunan dari logo
   const colors = {
     navyDeep: '#0B2E4E',
     navyMid: '#123A63',
@@ -197,6 +197,9 @@ export default function Sidebar({
 
           {/* HOME - Semua Role */}
           {menuItem('Home', '🏠', 'home', onHomeClick)}
+
+          {/* TIMELINE PROJECT - Semua Role */}
+          {menuItem('Timeline Project', '📅', 'timeline', onTimelineClick)}
 
           {/* KAS KANTOR - ADMIN SAJA */}
           {userRole === 'admin' &&

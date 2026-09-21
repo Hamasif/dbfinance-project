@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\OfficeCategoryController;
 use App\Http\Controllers\Api\NeracaController;
+use App\Http\Controllers\Api\ProjectTimelineController;
 
 // Project
 Route::get('/projects', [ProjectController::class, 'index']);
@@ -29,3 +30,8 @@ Route::get('/reports/office', [OfficeCategoryController::class, 'report']);
 // Neraca
 Route::get('/neraca-settings', [NeracaController::class, 'index']);
 Route::post('/neraca-settings', [NeracaController::class, 'update']);
+
+// Timeline
+Route::get('/projects/{projectId}/timelines', [ProjectTimelineController::class, 'indexByProject']);
+Route::post('/project-timelines', [ProjectTimelineController::class, 'store']);
+Route::delete('/project-timelines/{id}', [ProjectTimelineController::class, 'destroy']);
