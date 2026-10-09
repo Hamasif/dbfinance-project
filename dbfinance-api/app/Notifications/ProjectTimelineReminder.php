@@ -29,7 +29,8 @@ class ProjectTimelineReminder extends Notification
             'step_name'   => $this->timeline->step_name,
             'project_name'=> $this->timeline->project->project_name ?? 'Project',
             'start_date'  => $this->timeline->start_date,
-            'message'     => "Tahapan '{$this->timeline->step_name}' akan dimulai dalam 7 hari lagi ({$this->timeline->start_date})."
+            'end_date'    => $this->timeline->end_date,
+            'message'     => "Tahapan '{$this->timeline->step_name}' akan berakhir dalam 7 hari lagi ({$this->timeline->end_date})."
         ];
     }
 }

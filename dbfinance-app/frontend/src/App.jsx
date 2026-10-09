@@ -14,13 +14,31 @@ import './index.css';
 
 export default function App() {
   // State Autentikasi Login & Role Pengguna ('admin' atau 'operator')
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null);
+  // Dipulihkan dari localStorage agar tetap login saat halaman di-refresh
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
+  const [userRole, setUserRole] = useState(() => localStorage.getItem('userRole'));
 
   // State Navigasi Halaman
-  const [currentPage, setCurrentPage] = useState('home');
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [backTarget, setBackTarget] = useState('home');
+  // Halaman terakhir juga dipulihkan agar refresh tetap berada di halaman yang sama
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = localStorage.getItem('currentPage');
+    const role = localStorage.getItem('userRole');
+    const adminOnlyPages = ['office', 'laporan_kantor'];
+    const restrictedPages = ['buku_besar', 'laba_rugi', 'neraca'];
+    if (!saved) return 'home';
+    if (adminOnlyPages.includes(saved) && role !== 'admin') return 'home';
+    if (restrictedPages.includes(saved) && role !== 'admin' && role !== 'hrd') return 'home';
+    return saved;
+  });
+  const [selectedProject, setSelectedProject] = useState(() => {
+    try {
+      const saved = localStorage.getItem('selectedProject');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [backTarget, setBackTarget] = useState(() => localStorage.getItem('backTarget') || 'home');
 
   const [isMobile, setIsMobile] = useState(false);
 
@@ -34,11 +52,28 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Simpan status navigasi setiap kali berpindah halaman
+  useEffect(() => {
+    localStorage.setItem('currentPage', currentPage);
+    localStorage.setItem('backTarget', backTarget);
+  }, [currentPage, backTarget]);
+
+  // Simpan project/detail yang sedang dibuka
+  useEffect(() => {
+    if (selectedProject) {
+      localStorage.setItem('selectedProject', JSON.stringify(selectedProject));
+    } else {
+      localStorage.removeItem('selectedProject');
+    }
+  }, [selectedProject]);
+
   // Handler Sukses Login menerima objek user dari komponen Login
   const handleLoginSuccess = (userData) => {
     setIsAuthenticated(true);
     setUserRole(userData.role); // menyimpan role: 'admin' atau 'operator'
     setCurrentPage('home');     // default halaman awal setelah masuk
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', userData.role);
   };
 
   // Fungsi Navigasi Alur Aplikasi
@@ -99,6 +134,11 @@ export default function App() {
     setUserRole(null);
     setCurrentPage('home');
     setSelectedProject(null);
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('selectedProject');
+    localStorage.removeItem('currentPage');
+    localStorage.removeItem('backTarget');
   };
 
   // --- GERBANG LOGIN ---

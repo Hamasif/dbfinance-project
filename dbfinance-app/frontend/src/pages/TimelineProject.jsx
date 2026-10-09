@@ -22,12 +22,12 @@ export default function TimelineProject() {
 
   const [isMobile, setIsMobile] = useState(false);
 
-  // Helper: Menghitung sisa hari menuju tanggal mulai
-  const getDaysRemaining = (startDateStr) => {
-    if (!startDateStr) return 999;
+  // Helper: Menghitung sisa hari menuju tanggal berakhir (tenggat)
+  const getDaysRemaining = (endDateStr) => {
+    if (!endDateStr) return 999;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const targetDate = new Date(startDateStr);
+    const targetDate = new Date(endDateStr);
     targetDate.setHours(0, 0, 0, 0);
     const diffTime = targetDate - today;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -123,22 +123,25 @@ export default function TimelineProject() {
   useEffect(() => {
     let isMounted = true;
 
+    const filterByDeadline = (items) =>
+      items.filter(item => {
+        if (item.status === 'completed') return false;
+        if (!item.end_date) return false;
+        const daysLeft = getDaysRemaining(item.end_date);
+        return daysLeft >= 0 && daysLeft <= 7;
+      });
+
     const loadNotifications = async () => {
       try {
         const res = await axios.get(`${API_BASE_URL}/project-timelines/notifications`);
         const notifData = Array.isArray(res.data) ? res.data : (res.data.data || []);
         if (isMounted) {
-          setNotifications(notifData);
+          setNotifications(filterByDeadline(notifData));
         }
       } catch {
         // Fallback: Jika endpoint di backend belum di-deploy, hitung langsung dari state timelines
         if (isMounted) {
-          const upcomingNotifs = timelines.filter(item => {
-            if (item.status === 'completed') return false;
-            const daysLeft = getDaysRemaining(item.start_date);
-            return daysLeft >= 0 && daysLeft <= 7;
-          });
-          setNotifications(upcomingNotifs);
+          setNotifications(filterByDeadline(timelines));
         }
       }
     };
@@ -270,12 +273,12 @@ export default function TimelineProject() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '24px' }}>
             {notifications.map((notif) => {
-              const daysLeft = getDaysRemaining(notif.start_date);
+              const daysLeft = getDaysRemaining(notif.end_date);
               return (
                 <div key={notif.id} style={{ fontSize: '12.5px', color: '#78350F', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontWeight: '600' }}>• {notif.step_name}</span>
                   <span style={{ color: '#B45309' }}>
-                    ({notif.start_date})
+                    (Tenggat: {notif.end_date})
                   </span>
                   <span style={{
                     fontSize: '10px',
@@ -285,7 +288,7 @@ export default function TimelineProject() {
                     borderRadius: '4px',
                     fontWeight: '700'
                   }}>
-                    {daysLeft === 0 ? 'Mulai Hari Ini!' : daysLeft === 1 ? 'Besok!' : `${daysLeft} Hari Lagi`}
+                    {daysLeft === 0 ? 'Tenggat Hari Ini!' : daysLeft === 1 ? 'Besok Tenggat!' : `${daysLeft} Hari Lagi`}
                   </span>
                 </div>
               );
@@ -500,7 +503,7 @@ export default function TimelineProject() {
             </thead>
             <tbody>
               {timelines.map((item, i) => {
-                const daysLeft = getDaysRemaining(item.start_date);
+                const daysLeft = getDaysRemaining(item.end_date);
                 const isH7 = item.status !== 'completed' && daysLeft >= 0 && daysLeft <= 7;
 
                 return (

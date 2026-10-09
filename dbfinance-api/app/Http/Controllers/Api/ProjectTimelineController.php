@@ -46,17 +46,18 @@ class ProjectTimelineController extends Controller
         ]);
     }
 
-    // Mengambil daftar notifikasi H-7
+    // Mengambil daftar notifikasi H-7 berdasarkan tanggal berakhir (tenggat)
     public function getNotifications()
     {
-        // Mengambil timeline yang tanggal mulainya berada di rentang H-7 s/d hari ini
+        // Mengambil timeline yang tanggal berakhirnya berada di rentang hari ini s/d H-7
         $today = \Carbon\Carbon::now()->toDateString();
         $h7Date = \Carbon\Carbon::now()->addDays(7)->toDateString();
 
         $upcomingTimelines = ProjectTimeline::with('project')
-            ->whereBetween('start_date', [$today, $h7Date])
+            ->whereNotNull('end_date')
+            ->whereBetween('end_date', [$today, $h7Date])
             ->whereIn('status', ['pending', 'in_progress'])
-            ->orderBy('start_date', 'asc')
+            ->orderBy('end_date', 'asc')
             ->get();
 
         return response()->json($upcomingTimelines);

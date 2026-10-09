@@ -18,8 +18,9 @@ class CheckTimelineH7 extends Command
         // Ambil tanggal 7 hari dari sekarang
         $targetDate = Carbon::now()->addDays(7)->toDateString();
 
-        // Cari timeline yang start_date nya pas H-7 dan belum selesai
-        $timelines = ProjectTimeline::whereDate('start_date', $targetDate)
+        // Cari timeline yang end_date nya pas H-7 (jatuh tempo 7 hari lagi) dan belum selesai
+        $timelines = ProjectTimeline::whereNotNull('end_date')
+            ->whereDate('end_date', $targetDate)
             ->whereIn('status', ['pending', 'in_progress'])
             ->get();
 
