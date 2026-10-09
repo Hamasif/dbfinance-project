@@ -16,6 +16,11 @@ class ProjectTimeline extends Model
         'start_date',
         'end_date',
         'status',
+        'wa_sent_at',
+    ];
+
+    protected $casts = [
+        'wa_sent_at' => 'datetime',
     ];
 
     public function project()

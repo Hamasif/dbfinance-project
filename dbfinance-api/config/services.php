@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'fonnte' => [
+        'token' => env('FONNTE_TOKEN'),
+        'url' => env('FONNTE_URL', 'https://api.fonnte.com/send'),
+    ],
+
+    'whatsapp' => [
+        'target' => env('WA_REMINDER_TARGET'),
+    ],
+
 ];
