@@ -7,12 +7,15 @@ export default function Home({ onSelectProject }) {
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     
     const [form, setForm] = useState({
         project_name: '', 
         project_amount: '', 
         person_in_charge: '',
-        tax_rate: '0' 
+        tax_rate: '0',
+        start_date: '',
+        end_date: ''
     });
     
     const [isMobile, setIsMobile] = useState(false);
@@ -60,10 +63,18 @@ export default function Home({ onSelectProject }) {
     const calculatedTaxValue = (rawAmount * taxPercent) / 100;
     const finalCleanAmount = rawAmount - calculatedTaxValue; 
 
-    // 3. UBAHAN: Fungsi Simpan Project Baru ke API Laravel (MySQL)
+    // 3. UBAHAN: Fungsi Simpan Project Baru / Perubahan ke API Laravel (MySQL)
     const handleSubmit = async () => {
         if (!form.project_name || !form.project_amount || !form.person_in_charge) {
             alert('Semua field wajib diisi!');
+            return;
+        }
+        if (!form.start_date || !form.end_date) {
+            alert('Rentang waktu project (tanggal mulai & selesai) wajib diisi!');
+            return;
+        }
+        if (new Date(form.end_date) < new Date(form.start_date)) {
+            alert('Tanggal selesai tidak boleh lebih awal dari tanggal mulai!');
             return;
         }
 
@@ -74,11 +85,13 @@ export default function Home({ onSelectProject }) {
                 person_in_charge: form.person_in_charge,
                 tax_rate_percent: taxPercent,
                 tax_value_deduction: calculatedTaxValue,
-                project_raw_amount: rawAmount
+                project_raw_amount: rawAmount,
+                start_date: form.start_date,
+                end_date: form.end_date
             };
 
-            const response = await fetch(API_URL, {
-                method: 'POST',
+            const response = await fetch(editingId ? `${API_URL}/${editingId}` : API_URL, {
+                method: editingId ? 'PUT' : 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
@@ -89,7 +102,8 @@ export default function Home({ onSelectProject }) {
             if (!response.ok) throw new Error("Gagal menyimpan ke server");
 
             // Reset form kembali ke kondisi semula
-            setForm({ project_name: '', project_amount: '', person_in_charge: '', tax_rate: '0' });
+            setForm({ project_name: '', project_amount: '', person_in_charge: '', tax_rate: '0', start_date: '', end_date: '' });
+            setEditingId(null);
             setShowForm(false);
 
             setLoading(true);
@@ -98,6 +112,27 @@ export default function Home({ onSelectProject }) {
             console.error("Gagal menyimpan project baru: ", error);
             alert("Terjadi kesalahan sistem saat menyimpan ke database MySQL.");
         }
+    };
+
+    // 5. Fungsi Buka Form Ubah Project (mengisi form dengan data yang ada)
+    const handleEdit = (p) => {
+        setEditingId(p.id);
+        setForm({
+            project_name: p.project_name || '',
+            project_amount: p.project_raw_amount ?? p.project_amount ?? '',
+            person_in_charge: p.person_in_charge || '',
+            tax_rate: String(p.tax_rate_percent ?? '0'),
+            start_date: p.start_date || '',
+            end_date: p.end_date || ''
+        });
+        setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancelForm = () => {
+        setForm({ project_name: '', project_amount: '', person_in_charge: '', tax_rate: '0', start_date: '', end_date: '' });
+        setEditingId(null);
+        setShowForm(false);
     };
 
     // 4. UBAHAN: Fungsi Hapus Project dari API Laravel (MySQL)
@@ -125,6 +160,16 @@ export default function Home({ onSelectProject }) {
     const formatRupiah = (n) =>
         'Rp ' + Number(n).toLocaleString('id-ID');
 
+    // Cek apakah project sudah melewati batas waktu akhirnya (untuk badge Tertunda)
+    const isProjectOverdue = (p) => {
+        if (!p.end_date) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const endDate = new Date(p.end_date);
+        endDate.setHours(0, 0, 0, 0);
+        return endDate < today;
+    };
+
     return (
         <div style={{ flex: 1, padding: isMobile ? '16px' : '24px', overflowY: 'auto', boxSizing: 'border-box' }}>
             
@@ -144,7 +189,7 @@ export default function Home({ onSelectProject }) {
                     </p>
                 </div>
                 <button 
-                    onClick={() => setShowForm(!showForm)} 
+                    onClick={() => showForm ? handleCancelForm() : setShowForm(true)} 
                     style={{
                         display: 'flex', alignItems: 'center', gap: '6px',
                         padding: '10px 16px', background: '#185FA5', color: '#fff',
@@ -194,7 +239,7 @@ export default function Home({ onSelectProject }) {
                     boxSizing: 'border-box'
                 }}>
                     <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '16px', marginTop: 0 }}>
-                        Tambah Project Baru
+                        {editingId ? 'Ubah Project' : 'Tambah Project Baru'}
                     </h2>
                     <div style={{ 
                         display: 'grid', 
@@ -263,6 +308,36 @@ export default function Home({ onSelectProject }) {
                                 }} />
                         </div>
 
+                        <div>
+                            <label style={{
+                                fontSize: '12px', fontWeight: '500',
+                                color: '#374151', display: 'block', marginBottom: '5px'
+                            }}>
+                                Timeline Awal Project *
+                            </label>
+                            <input name="start_date" value={form.start_date}
+                                onChange={handleChange} type="date"
+                                style={{
+                                    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+                                    borderRadius: '8px', fontSize: '13.5px', outline: 'none', boxSizing: 'border-box'
+                                }} />
+                        </div>
+
+                        <div>
+                            <label style={{
+                                fontSize: '12px', fontWeight: '500',
+                                color: '#374151', display: 'block', marginBottom: '5px'
+                            }}>
+                                Timeline Akhir Project *
+                            </label>
+                            <input name="end_date" value={form.end_date}
+                                onChange={handleChange} type="date" min={form.start_date || undefined}
+                                style={{
+                                    width: '100%', padding: '10px 12px', border: '1px solid #d1d5db',
+                                    borderRadius: '8px', fontSize: '13.5px', outline: 'none', boxSizing: 'border-box'
+                                }} />
+                        </div>
+
                         {rawAmount > 0 && (
                             <div style={{ 
                                 gridColumn: '1 / -1', 
@@ -297,7 +372,7 @@ export default function Home({ onSelectProject }) {
                         gap: '8px', marginTop: '16px', paddingTop: '14px',
                         borderTop: '1px solid #e5e7eb'
                     }}>
-                        <button onClick={() => setShowForm(false)} style={{
+                        <button onClick={handleCancelForm} style={{
                             padding: '10px 16px', border: '1px solid #d1d5db', borderRadius: '8px',
                             background: '#fff', fontSize: '13px', cursor: 'pointer',
                             textAlign: 'center', width: isMobile ? '100%' : 'auto'
@@ -310,7 +385,7 @@ export default function Home({ onSelectProject }) {
                             cursor: 'pointer', fontWeight: '500', textAlign: 'center',
                             width: isMobile ? '100%' : 'auto'
                         }}>
-                            Simpan Project
+                            {editingId ? 'Simpan Perubahan' : 'Simpan Project'}
                         </button>
                     </div>
                 </div>
@@ -337,10 +412,10 @@ export default function Home({ onSelectProject }) {
                         </div>
                     </div>
                 ) : (
-                    <table style={{ width: '100%', minWidth: '650px', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', fontSize: '13px' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                                {['#', 'Nama Project', 'Besaran Anggaran Bersih', 'Penanggung Jawab', 'Aksi'].map(h => (
+                                {['#', 'Nama Project', 'Besaran Anggaran Bersih', 'Penanggung Jawab', 'Periode Project', 'Aksi'].map(h => (
                                     <th key={h} style={{
                                         padding: '12px 16px', textAlign: 'left',
                                         fontSize: '11px', fontWeight: '600', color: '#6b7280',
@@ -381,14 +456,44 @@ export default function Home({ onSelectProject }) {
                                         {formatRupiah(p.project_amount)}
                                     </td>
                                     <td style={{ padding: '14px 16px' }}>{p.person_in_charge}</td>
+
+                                    <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                                        {p.start_date || p.end_date ? (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                <span style={{ color: '#4b5563' }}>
+                                                    📅 {p.start_date || '-'} {p.end_date ? `s/d ${p.end_date}` : ''}
+                                                </span>
+                                                {isProjectOverdue(p) && (
+                                                    <span style={{
+                                                        fontSize: '10px', background: '#fee2e2', color: '#991b1b',
+                                                        padding: '2px 6px', borderRadius: '4px', fontWeight: '600'
+                                                    }}>
+                                                        Tertunda
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span style={{ color: '#9ca3af' }}>-</span>
+                                        )}
+                                    </td>
+
                                     <td style={{ padding: '14px 16px' }}>
-                                        <button onClick={() => handleDelete(p.id)} style={{
-                                            padding: '6px 12px', border: '1px solid #fca5a5',
-                                            background: '#fff', color: '#ef4444', borderRadius: '6px',
-                                            fontSize: '12px', cursor: 'pointer'
-                                        }}>
-                                            Hapus
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button onClick={() => handleEdit(p)} style={{
+                                                padding: '6px 12px', border: '1px solid #93c5fd',
+                                                background: '#fff', color: '#185FA5', borderRadius: '6px',
+                                                fontSize: '12px', cursor: 'pointer'
+                                            }}>
+                                                Ubah
+                                            </button>
+                                            <button onClick={() => handleDelete(p.id)} style={{
+                                                padding: '6px 12px', border: '1px solid #fca5a5',
+                                                background: '#fff', color: '#ef4444', borderRadius: '6px',
+                                                fontSize: '12px', cursor: 'pointer'
+                                            }}>
+                                                Hapus
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -10,6 +10,7 @@ export default function TimelineProject() {
   const [timelines, setTimelines] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
   const [formData, setFormData] = useState({
@@ -31,6 +32,15 @@ export default function TimelineProject() {
     targetDate.setHours(0, 0, 0, 0);
     const diffTime = targetDate - today;
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Helper: Status efektif — tahapan yang sudah melewati batas waktu
+  // (tenggat tahapannya sendiri ATAU tenggat akhir project) otomatis menjadi "Tertunda"
+  const getEffectiveStatus = (item) => {
+    if (item.status === 'completed') return 'completed';
+    const stepOverdue = item.end_date && getDaysRemaining(item.end_date) < 0;
+    const projectOverdue = currentProject?.end_date && getDaysRemaining(currentProject.end_date) < 0;
+    return (stepOverdue || projectOverdue) ? 'delayed' : item.status;
   };
 
   // 1. Deteksi ukuran layar responsif
@@ -162,19 +172,47 @@ export default function TimelineProject() {
       alert('Nama tahapan dan tanggal mulai wajib diisi!');
       return;
     }
+    if (formData.end_date && new Date(formData.end_date) < new Date(formData.start_date)) {
+      alert('Tanggal selesai tidak boleh lebih awal dari tanggal mulai!');
+      return;
+    }
 
     try {
-      await axios.post(`${API_BASE_URL}/project-timelines`, {
-        ...formData,
-        project_id: selectedProjectId,
-      });
+      if (editingId) {
+        await axios.put(`${API_BASE_URL}/project-timelines/${editingId}`, formData);
+      } else {
+        await axios.post(`${API_BASE_URL}/project-timelines`, {
+          ...formData,
+          project_id: selectedProjectId,
+        });
+      }
       setFormData({ step_name: '', description: '', start_date: '', end_date: '', status: 'pending' });
+      setEditingId(null);
       setShowForm(false);
       loadTimelines(selectedProjectId);
     } catch (err) {
-      console.error('Gagal menambah timeline:', err);
+      console.error('Gagal menyimpan timeline:', err);
       alert('Terjadi kesalahan sistem saat menyimpan tahapan timeline.');
     }
+  };
+
+  // Buka form ubah tahapan (mengisi form dengan data yang ada)
+  const handleEdit = (item) => {
+    setEditingId(item.id);
+    setFormData({
+      step_name: item.step_name || '',
+      description: item.description || '',
+      start_date: item.start_date || '',
+      end_date: item.end_date || '',
+      status: item.status || 'pending'
+    });
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setFormData({ step_name: '', description: '', start_date: '', end_date: '', status: 'pending' });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   const handleDelete = async (id) => {
@@ -221,6 +259,15 @@ export default function TimelineProject() {
   // Mengambil objek project yang sedang dipilih
   const currentProject = projects.find(p => String(p.id) === String(selectedProjectId));
 
+  // Urutkan tahapan berdasarkan tanggal selesainya paling dekat (paling atas)
+  // hingga yang paling lama (paling bawah); tanpa tenggat diletakkan paling akhir
+  const sortedTimelines = [...(Array.isArray(timelines) ? timelines : [])].sort((a, b) => {
+    if (!a.end_date && !b.end_date) return 0;
+    if (!a.end_date) return 1;
+    if (!b.end_date) return -1;
+    return new Date(a.end_date) - new Date(b.end_date);
+  });
+
   return (
     <div style={{ flex: 1, padding: isMobile ? '16px' : '24px', overflowY: 'auto', boxSizing: 'border-box' }}>
       
@@ -240,7 +287,7 @@ export default function TimelineProject() {
           </p>
         </div>
         <button 
-          onClick={() => setShowForm(!showForm)} 
+          onClick={() => showForm ? handleCancelForm() : setShowForm(true)} 
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             padding: '10px 16px', background: '#185FA5', color: '#fff',
@@ -300,7 +347,7 @@ export default function TimelineProject() {
       {/* Stats & Project Picker */}
       <div style={{
         display: 'grid', 
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
         gap: '12px', 
         marginBottom: '24px'
       }}>
@@ -339,6 +386,29 @@ export default function TimelineProject() {
             {currentProject?.person_in_charge || currentProject?.sub_label || '-'}
           </div>
         </div>
+
+        <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 16px', boxSizing: 'border-box' }}>
+          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Periode Project
+          </div>
+          {currentProject?.start_date || currentProject?.end_date ? (
+            <div style={{ fontSize: '13.5px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
+              📅 {currentProject.start_date || '-'} s/d {currentProject.end_date || '-'}
+              {currentProject.end_date && getDaysRemaining(currentProject.end_date) < 0 && (
+                <span style={{
+                  fontSize: '10px', background: '#fee2e2', color: '#991b1b',
+                  padding: '2px 6px', borderRadius: '4px', fontWeight: '700', marginLeft: '6px'
+                }}>
+                  Lewat Batas
+                </span>
+              )}
+            </div>
+          ) : (
+            <div style={{ fontSize: '13.5px', fontWeight: '600', color: '#9ca3af' }}>
+              Belum diatur (ubah di menu Home)
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Form Tambah Tahapan Baru */}
@@ -349,7 +419,7 @@ export default function TimelineProject() {
           boxSizing: 'border-box'
         }}>
           <h2 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '16px', marginTop: 0 }}>
-            Tambah Step / Tahapan Baru
+            {editingId ? 'Ubah Step / Tahapan' : 'Tambah Step / Tahapan Baru'}
           </h2>
           <div style={{ 
             display: 'grid', 
@@ -449,7 +519,7 @@ export default function TimelineProject() {
             gap: '8px', marginTop: '16px', paddingTop: '14px',
             borderTop: '1px solid #e5e7eb'
           }}>
-            <button onClick={() => setShowForm(false)} style={{
+            <button onClick={handleCancelForm} style={{
               padding: '10px 16px', border: '1px solid #d1d5db', borderRadius: '8px',
               background: '#fff', fontSize: '13px', cursor: 'pointer',
               textAlign: 'center', width: isMobile ? '100%' : 'auto'
@@ -462,7 +532,7 @@ export default function TimelineProject() {
               cursor: 'pointer', fontWeight: '500', textAlign: 'center',
               width: isMobile ? '100%' : 'auto'
             }}>
-              Simpan Tahapan
+              {editingId ? 'Simpan Perubahan' : 'Simpan Tahapan'}
             </button>
           </div>
         </div>
@@ -502,9 +572,11 @@ export default function TimelineProject() {
               </tr>
             </thead>
             <tbody>
-              {timelines.map((item, i) => {
+              {sortedTimelines.map((item, i) => {
                 const daysLeft = getDaysRemaining(item.end_date);
-                const isH7 = item.status !== 'completed' && daysLeft >= 0 && daysLeft <= 7;
+                const effectiveStatus = getEffectiveStatus(item);
+                const isH7 = effectiveStatus !== 'completed' && effectiveStatus !== 'delayed' && daysLeft >= 0 && daysLeft <= 7;
+                const isOverdue = effectiveStatus === 'delayed' && item.status !== 'completed';
 
                 return (
                   <tr key={item.id} style={{
@@ -516,7 +588,7 @@ export default function TimelineProject() {
                     </td>
 
                     <td style={{ padding: '14px 16px', fontWeight: '600', color: '#111827' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                         {item.step_name}
                         {isH7 && (
                           <span style={{
@@ -531,6 +603,19 @@ export default function TimelineProject() {
                             H-{daysLeft}
                           </span>
                         )}
+                        {isOverdue && (
+                          <span style={{
+                            fontSize: '9.5px',
+                            background: '#FEE2E2',
+                            color: '#991B1B',
+                            border: '1px solid #FCA5A5',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            fontWeight: '700'
+                          }}>
+                            {item.end_date ? `Lewat ${Math.abs(daysLeft)} hari` : 'Lewat Batas Project'}
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -539,7 +624,7 @@ export default function TimelineProject() {
                     </td>
 
                     <td style={{ padding: '14px 16px' }}>
-                      {getStatusBadge(item.status)}
+                      {getStatusBadge(effectiveStatus)}
                     </td>
 
                     <td style={{ padding: '14px 16px', color: '#6b7280', fontSize: '12.5px', maxWidth: '280px' }}>
@@ -547,13 +632,22 @@ export default function TimelineProject() {
                     </td>
 
                     <td style={{ padding: '14px 16px' }}>
-                      <button onClick={() => handleDelete(item.id)} style={{
-                        padding: '6px 12px', border: '1px solid #fca5a5',
-                        background: '#fff', color: '#ef4444', borderRadius: '6px',
-                        fontSize: '12px', cursor: 'pointer'
-                      }}>
-                        Hapus
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => handleEdit(item)} style={{
+                          padding: '6px 12px', border: '1px solid #93c5fd',
+                          background: '#fff', color: '#185FA5', borderRadius: '6px',
+                          fontSize: '12px', cursor: 'pointer'
+                        }}>
+                          Ubah
+                        </button>
+                        <button onClick={() => handleDelete(item.id)} style={{
+                          padding: '6px 12px', border: '1px solid #fca5a5',
+                          background: '#fff', color: '#ef4444', borderRadius: '6px',
+                          fontSize: '12px', cursor: 'pointer'
+                        }}>
+                          Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

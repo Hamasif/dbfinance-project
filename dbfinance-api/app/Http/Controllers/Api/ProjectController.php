@@ -7,6 +7,7 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Models\OfficeCategory;
 use App\Models\Transaction;
+use App\Models\ProjectTimeline;
 
 class ProjectController extends Controller
 {
@@ -18,8 +19,65 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
-        $project = Project::create($request->all());
+        $request->validate([
+            'project_name' => 'required|string|max:255',
+            'project_amount' => 'required|numeric',
+            'person_in_charge' => 'required|string|max:255',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $data = $request->all();
+        foreach (['start_date', 'end_date'] as $field) {
+            if (empty($data[$field])) $data[$field] = null;
+        }
+
+        $project = Project::create($data);
         return response()->json(['message' => 'Proyek berhasil disimpan ke MySQL!', 'data' => $project]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $project = Project::findOrFail($id);
+
+        $request->validate([
+            'project_name' => 'required|string|max:255',
+            'project_amount' => 'required|numeric',
+            'person_in_charge' => 'required|string|max:255',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $data = $request->all();
+        foreach (['start_date', 'end_date'] as $field) {
+            if (empty($data[$field])) $data[$field] = null;
+        }
+
+        $project->update($data);
+
+        // Jika batas waktu project diperpanjang (belum lewat / dihapus),
+        // tahapan "Tertunda" yang tenggatnya belum lewat dikembalikan ke status normal
+        $today = \Carbon\Carbon::today();
+        $projectOverdue = !empty($project->end_date) && $project->end_date->lt($today);
+
+        if (!$projectOverdue) {
+            $toRestore = ProjectTimeline::where('project_id', $project->id)
+                ->where('status', 'delayed')
+                ->where(function ($q) use ($today) {
+                    $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today->toDateString());
+                })
+                ->get();
+
+            foreach ($toRestore as $timeline) {
+                $timeline->update([
+                    'status' => (!empty($timeline->start_date) && \Carbon\Carbon::parse($timeline->start_date)->gt($today))
+                        ? 'pending'
+                        : 'in_progress',
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Proyek berhasil diperbarui!', 'data' => $project]);
     }
 
     public function destroy($id)

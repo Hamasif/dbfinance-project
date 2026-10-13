@@ -9,7 +9,21 @@ class Project extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['project_name', 'project_amount', 'person_in_charge', 'tax_rate_percent', 'tax_value_deduction', 'project_raw_amount'];
+    protected $fillable = [
+        'project_name',
+        'project_amount',
+        'person_in_charge',
+        'tax_rate_percent',
+        'tax_value_deduction',
+        'project_raw_amount',
+        'start_date',
+        'end_date',
+    ];
+
+    protected $casts = [
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d',
+    ];
 
     // Relasi ke tabel transaksi
     public function transactions()
